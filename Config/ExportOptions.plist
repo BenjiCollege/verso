@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+    A template. `__TEAM_ID__` is substituted at export time from the
+    APPLE_TEAM_ID secret, because a team ID identifies an account and should not
+    sit in a public repo.
+-->
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<string>app-store-connect</string>
+
+	<key>teamID</key>
+	<string>__TEAM_ID__</string>
+
+	<key>signingStyle</key>
+	<string>automatic</string>
+
+	<!--
+	    Off deliberately. Left on, Xcode rewrites CFBundleVersion during export
+	    to whatever it thinks comes next — so the build number the workflow was
+	    given is not the one that reaches App Store Connect, and two dispatches
+	    can collide without either looking wrong.
+	-->
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+
+	<!-- Makes crash reports readable. -->
+	<key>uploadSymbols</key>
+	<true/>
+
+	<!-- Ship what was built and tested; let the App Store do the thinning. -->
+	<key>stripSwiftSymbols</key>
+	<true/>
+
+	<key>destination</key>
+	<string>export</string>
+</dict>
+</plist>

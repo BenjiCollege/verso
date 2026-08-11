@@ -1,0 +1,129 @@
+# The project, as source.
+#
+# `Verso.xcodeproj` is generated from this and gitignored. A `.pbxproj` is
+# unmergeable — every branch that adds a file conflicts with every other one —
+# and this file is reviewable in a way that one is not.
+#
+# Sources are globbed by directory, so adding a Swift file needs no edit here.
+#
+#   brew install xcodegen && xcodegen generate
+
+name: Verso
+
+options:
+  bundleIdPrefix: com.verso
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+  # Xcode 26 default. Bump only deliberately.
+  xcodeVersion: "2600"
+  minimumXcodeGenVersion: "2.42.0"
+
+# The whole app. Both the app target and the widget extension depend on it, so
+# there is exactly one copy of the engine, the models and the store.
+packages:
+  VersoKit:
+    path: VersoKit
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_APPROACHABLE_CONCURRENCY: YES
+    # Deliberately left at nonisolated: SwiftData models are context-confined,
+    # not main-thread-confined. See Core/Models/Note.swift.
+    SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+    SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # Set once here rather than per target, so the app and its extension can
+    # never drift onto different teams.
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  Verso:
+    type: application
+    platform: iOS
+    sources:
+      - path: Verso
+    dependencies:
+      - package: VersoKit
+      # XcodeGen adds the embed-extension copy phase from this.
+      - target: VersoWidgets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.verso.notes
+        PRODUCT_NAME: Verso
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Config/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Config/Verso.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+        ENABLE_PREVIEWS: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+
+  VersoWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: VersoWidgets
+    dependencies:
+      - package: VersoKit
+    settings:
+      base:
+        # Must be prefixed by the app's, or the extension will not install.
+        PRODUCT_BUNDLE_IDENTIFIER: com.verso.notes.widgets
+        PRODUCT_NAME: VersoWidgets
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Config/VersoWidgets-Info.plist
+        CODE_SIGN_ENTITLEMENTS: Config/VersoWidgets.entitlements
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SKIP_INSTALL: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+
+  VersoTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: VersoTests
+    dependencies:
+      # Sets TEST_HOST and BUNDLE_LOADER. The tests need a host because they
+      # read bundled resources and build SwiftData containers.
+      - target: Verso
+      - package: VersoKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.verso.notes.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+
+schemes:
+  Verso:
+    build:
+      targets:
+        Verso: all
+        VersoWidgets: all
+      parallelizeBuild: true
+    run:
+      config: Debug
+    test:
+      config: Debug
+      # `@testable import VersoKit` needs the package built with testability,
+      # which Debug does.
+      gatherCoverageData: true
+      targets:
+        - VersoTests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

@@ -1,279 +1,261 @@
 # From this repo to TestFlight
 
-Written to be followed in order. The gates are ordered by what blocks what —
-account setup is Gate 3 because there is no point creating identifiers for a
-build that does not exist yet.
+**No Mac required.** The repo holds no `.xcodeproj` — CI generates it, builds on
+a macOS runner, and authenticates to Apple with a single App Store Connect API
+key that covers both signing and uploading.
 
-Nothing in this document has been performed. It was written on Windows, with no
-Xcode and no access to an Apple Developer account.
+Written on Windows. Nothing here has been run.
 
 ---
 
-## Gate 0 — A Mac with Xcode 26
+## How it fits together
 
-Not optional and not substitutable. Archiving, signing and uploading all require
-it. Xcode Cloud can build, but you still need Xcode locally to get the project
-compiling in the first place.
+```
+project.yml            source of truth; .xcodeproj is generated and gitignored
+  ↓ xcodegen generate
+.github/workflows/
+  ios.yml              push + PR      no credentials   "does it compile"
+  ios-release.yml      manual only    API key          "can we ship it"
+Config/ExportOptions.plist            __TEAM_ID__ substituted at runtime
+scripts/verify-*.sh                   what was *actually* signed
+```
+
+Two workflows, deliberately separated. A signing failure never looks like a
+compile failure, and archiving to inspect a build is a different action from
+sending it to Apple — `ios-release.yml` takes an `upload` boolean that defaults
+to **false**.
 
 ---
 
 ## Gate 1 — Make it compile
 
-**This is the gate that matters.** The repo has never been built. Work through
-[README.md](README.md)'s porting tables, which are ordered by how much each item
-blocks. Expect to spend real time here.
+The repo has never been built. Push to a branch and let `ios.yml` tell you what
+is wrong; it needs no secrets, so it works before any account setup.
 
-```bash
-open Verso.xcodeproj
-```
+Work through [README.md](README.md)'s porting tables, which are ordered by how
+much each item blocks. `ThemeLoaderTests` and `TemplateLibraryTests` fail loudly
+if resources or the package boundary are wrong, which is the intended alarm.
 
-Do not proceed until `Product → Build` succeeds for both the `Verso` and
-`VersoWidgets` targets, and `Product → Test` passes. The tests are the fastest
-way to find what drifted — `ThemeLoaderTests` and `TemplateLibraryTests` in
-particular fail loudly if resources or the package boundary are wrong.
-
----
+Do not proceed until `ios.yml` is green.
 
 ## Gate 2 — An app icon
 
-**TestFlight will reject an upload without one.** This is a hard stop, not a
-warning.
+TestFlight rejects uploads without one. A hard stop, not a warning.
 
-[AppIcon.appiconset](VersoKit/Sources/VersoKit/../../../Verso/Resources/Assets.xcassets/AppIcon.appiconset)
-declares the slots and is empty. You need at minimum:
-
-- 1024×1024 PNG, **no alpha channel, no rounded corners** — Apple applies the
-  mask
-- Optionally the dark and tinted variants the asset catalogue also declares
-
-Drop it into the asset catalogue in Xcode. Everything else about the launch
-experience is already done.
+`Verso/Resources/Assets.xcassets/AppIcon.appiconset` declares the slots and is
+empty. You need a 1024×1024 PNG with **no alpha and no rounded corners** — Apple
+applies the mask.
 
 ---
 
-## Gate 3 — Apple Developer account, identifiers and capabilities
+## Gate 3 — Apple Developer portal
 
-### 3.1 Enrol
+### 3.1 Enrol and note your Team ID
 
-[developer.apple.com/programs](https://developer.apple.com/programs/) — £79/$99
-a year. Individual or Organization; Organization needs a D-U-N-S number and
-takes longer. Verso needs nothing that depends on which you pick.
+[developer.apple.com/programs](https://developer.apple.com/programs/), £79/$99 a
+year. Team ID is under *Membership details*.
 
-Note your **Team ID** (Membership details) — it prefixes everything.
+### 3.2 Register one device — the trap that blocks CI-only teams
 
-### 3.2 Choose your bundle identifier
+**Do this even though you are building on CI and may never install locally.**
 
-`com.verso.notes` is a placeholder and is almost certainly not yours to use.
-Pick a prefix on a domain you control, reversed — e.g. `com.example.verso`.
+Automatic signing at archive time wants an App Development profile, and Apple
+will not issue one for a team with zero registered devices. Ad-hoc is rejected
+by modern SDKs (`not allowed with SDK 'iOS 26.x'`), and an empty signing
+identity makes `xcodebuild` skip `codesign` entirely — which is precisely the
+silent-no-entitlements failure the verification scripts exist to catch.
 
+*Devices* → **+** → register any UDID. One is enough. Get it from Finder with
+the device connected, or from *Settings → General → About*.
+
+### 3.3 Choose your bundle identifier
+
+`com.verso.notes` is a placeholder. Pick a prefix on a domain you control.
 Everything derives from it:
 
-| Thing | Placeholder | Yours |
-|---|---|---|
-| App bundle ID | `com.verso.notes` | `com.example.verso` |
-| Widget bundle ID | `com.verso.notes.widgets` | `com.example.verso.widgets` |
-| Test bundle ID | `com.verso.notes.tests` | `com.example.verso.tests` |
-| App Group | `group.com.verso.notes` | `group.com.example.verso` |
-| iCloud container | `iCloud.com.verso.notes` | `iCloud.com.example.verso` |
-| Template UTI | `com.verso.notes.template` | `com.example.verso.template` |
-| Handoff activity | `com.verso.notes.open-note` | `com.example.verso.open-note` |
-| Keychain service | `com.verso.notes.vault` | `com.example.verso.vault` |
-| Spotlight domain | `com.verso.notes.notes` | `com.example.verso.notes` |
+| Thing | Placeholder |
+|---|---|
+| App bundle ID | `com.verso.notes` |
+| Widget bundle ID | `com.verso.notes.widgets` |
+| App Group | `group.com.verso.notes` |
+| iCloud container | `iCloud.com.verso.notes` |
+| Template UTI | `com.verso.notes.template` |
+| Handoff activity | `com.verso.notes.open-note` |
+| Keychain service | `com.verso.notes.vault` |
+| Spotlight domain | `com.verso.notes.notes` |
+| `Logger` subsystems | `com.verso.notes` |
 
-The widget bundle ID **must** be prefixed by the app's, or the extension will
-not install.
-
-### 3.3 Rename in the repo
-
-One search-and-replace covers every one of them, including the `Logger`
-subsystems:
+One replacement covers all of them, including the two that merely contain the
+string:
 
 ```bash
-grep -rl "com\.verso\.notes" --include=*.swift --include=*.plist --include=*.pbxproj --include=*.entitlements . | xargs sed -i '' 's/com\.verso\.notes/com.example.verso/g'
+grep -rl "com\.verso\.notes" --include=*.swift --include=*.plist --include=*.yml --include=*.entitlements . | xargs sed -i '' 's/com\.verso\.notes/com.example.verso/g'
 ```
 
-That also fixes `iCloud.com.verso.notes` and `group.com.verso.notes`, since both
-contain the string. Verify with:
+Verify with the same `grep` — it should print nothing. The widget bundle ID
+**must** stay prefixed by the app's, or the extension will not install.
 
-```bash
-grep -rn "com\.verso\.notes" --include=*.swift --include=*.plist --include=*.pbxproj --include=*.entitlements .
-```
+### 3.4 Register identifiers, in this order
 
-It should print nothing.
+The App IDs reference the other two, so those have to exist first.
 
-### 3.4 Register identifiers
+1. **App Group** → `group.com.example.verso`
+2. **iCloud Container** → `iCloud.com.example.verso`
+3. **App ID** → explicit `com.example.verso`, with:
+   - App Groups → select the group
+   - iCloud → CloudKit → select the container
+   - Push Notifications *(CloudKit needs it; Verso sends none itself)*
+   - Time Sensitive Notifications *(rest timers and place reminders)*
+4. **App ID** → explicit `com.example.verso.widgets`, with:
+   - App Groups → the same group
+   - iCloud → CloudKit → the same container
 
-[Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources/identifiers/list)
-→ **Identifiers** → **+**.
+Export fails on any capability that is in an entitlements file but not enabled
+on its identifier. The two entitlements files are
+[Config/Verso.entitlements](Config/Verso.entitlements) and
+[Config/VersoWidgets.entitlements](Config/VersoWidgets.entitlements) — they are
+the checklist.
 
-Create these four, in this order — the App IDs reference the other two, so those
-have to exist first:
+Verso needs **no** Sign in with Apple, **no** Associated Domains, **no**
+HealthKit and **no** background audio mode. If you find yourself adding one,
+something has drifted from the spec.
 
-1. **App Group** → `group.com.example.verso`, description "Verso Shared"
-2. **iCloud Container** → `iCloud.com.example.verso`, description "Verso"
-3. **App ID** (App) → explicit `com.example.verso`, with capabilities:
-   - **App Groups** — select the group above
-   - **iCloud** → CloudKit — select the container above
-   - **Push Notifications** — CloudKit sync needs it, even though Verso sends
-     none itself
-   - **Time Sensitive Notifications** — rest timers and place reminders use
-     `.timeSensitive`; without this iOS silently downgrades them
-4. **App ID** (App) → explicit `com.example.verso.widgets`, with:
-   - **App Groups** — the same group
-   - **iCloud** → CloudKit — the same container
+### 3.5 The API key
 
-The test target needs no App ID; it is never distributed.
+*Users and Access* → **Integrations** → **App Store Connect API** → **+**, role
+**App Manager**.
 
-Verso needs **no** Sign in with Apple, **no** Associated Domains, **no** HealthKit
-and **no** background audio mode. If you find yourself adding one, something has
-drifted from the spec.
+You get a `.p8` (**downloadable once**), a Key ID and an Issuer ID.
 
-### 3.5 Certificates and profiles
+One key does both jobs — `xcodebuild` uses it to create certificates and
+profiles on demand, and `altool` uses it to upload. There is no exporting a
+`.p12` and base64-ing it into a secret anywhere in this setup.
 
-**Use automatic signing.** In Xcode, for each of the three targets:
-*Signing & Capabilities* → tick **Automatically manage signing** → select your
-Team. Xcode creates and renews the development and distribution certificates and
-the provisioning profiles for you, and gets the `aps-environment` right per
-configuration.
+### 3.6 Repository secrets
 
-Only do it manually if your organisation requires it. The manual path is:
+*Settings → Secrets and variables → Actions*:
 
-1. Keychain Access → *Certificate Assistant* → *Request a Certificate From a
-   Certificate Authority*, save to disk
-2. Developer portal → **Certificates** → **+** → *Apple Distribution* → upload
-   the CSR → download and double-click the `.cer`
-3. **Profiles** → **+** → *App Store Connect* → one profile per App ID → download
-   and double-click
-4. Xcode → untick automatic signing → select the profiles
-
-> If CloudKit sync works in Debug but not from TestFlight, look at
-> `aps-environment` in [Config/Verso.entitlements](Config/Verso.entitlements)
-> first. It reads `development`. Automatic signing normally substitutes
-> `production` for a distribution build; if yours does not, split the
-> entitlements into per-configuration files.
-
-### 3.6 CloudKit schema
-
-CloudKit has a Development and a Production environment, and **the schema does
-not promote itself**.
-
-1. Run the app on a device or simulator signed into iCloud. SwiftData creates
-   the record types in Development on first sync.
-2. [CloudKit Console](https://icloud.developer.apple.com/) → your container →
-   *Schema* → confirm `CD_Note`, `CD_Block`, `CD_MetricEntry`, `CD_Version`,
-   `CD_AudioAsset`, `CD_Folder`, `CD_Tag` exist.
-3. **Deploy Schema to Production.** TestFlight builds use Production. Skip this
-   and testers get an app that never syncs and no error explaining it.
-
-Re-deploy after any schema change. There has been one since §4:
-`AudioAsset.recording` — see the README.
+| Secret | Where from |
+|---|---|
+| `ASC_KEY_ID` | shown next to the key |
+| `ASC_ISSUER_ID` | at the top of the Integrations page |
+| `ASC_KEY_P8` | the whole `.p8`, `-----BEGIN` line included |
+| `APPLE_TEAM_ID` | Membership details |
 
 ---
 
 ## Gate 4 — App Store Connect record
 
-[appstoreconnect.apple.com](https://appstoreconnect.apple.com) → **Apps** → **+**
-→ *New App*.
+**Apps** → **+** → *New App*. Bundle ID `com.example.verso` — the main bundle
+**only**. Extensions ship inside the app and get no record of their own.
 
-| Field | Value |
-|---|---|
-| Platform | iOS |
-| Name | Verso *(must be unique across the store — check early)* |
-| Primary language | English (U.K.) or (U.S.) |
-| Bundle ID | `com.example.verso` |
-| SKU | Anything internal, e.g. `verso-ios` |
-| User access | Full Access |
-
-You need **App Privacy** answered before external testing, and it is short:
-**Data Not Collected**. There is no server, no analytics SDK and no third-party
-dependency. See [SUBMISSION.md](SUBMISSION.md) for the full reasoning — it is
+App Privacy is short: **Data Not Collected**. No server, no analytics SDK, no
+third-party dependency. [SUBMISSION.md](SUBMISSION.md) has the reasoning; it is
 worth putting on the product page.
 
 ---
 
-## Gate 5 — Archive and upload
+## Gate 5 — Archive, verify, upload
 
-1. Bump the build number. Every upload needs a unique `CURRENT_PROJECT_VERSION`;
-   `MARKETING_VERSION` only changes when the version does.
-2. Scheme → destination → **Any iOS Device (arm64)**. Archive is disabled for a
-   simulator destination.
-3. *Product* → **Archive**.
-4. Organizer opens → select the archive → **Distribute App** → *TestFlight &
-   App Store* → **Upload**.
-5. Let Xcode manage signing when prompted. Leave *Upload symbols* ticked so
-   crash reports are readable.
+*Actions* → **iOS Release** → **Run workflow**.
 
-Processing takes anywhere from five minutes to an hour. You get an email when
-the build is ready, and another if it is rejected — read that one carefully;
-most first-upload rejections are a missing icon, a bad entitlement, or an
-`Info.plist` usage string.
+| Input | Notes |
+|---|---|
+| `build_number` | Must be higher than the last uploaded. Nothing auto-increments it — see below. |
+| `marketing_version` | `1.0` unless the version itself changed |
+| `upload` | Leave **false** the first time |
 
-**Export compliance** is already answered:
-`ITSAppUsesNonExemptEncryption` is `false` in
-[Config/Info.plist](Config/Info.plist), so you will not be asked per build.
-[SUBMISSION.md](SUBMISSION.md) explains the reasoning and flags that you should
-confirm the current exemption wording in App Store Connect, because it changes.
+Run it with `upload: false` first. You get a `.ipa` artifact and, more usefully,
+the verification output — which tells you whether signing actually worked before
+you spend a build number finding out.
+
+### Then deploy the CloudKit schema
+
+CloudKit has separate Development and Production environments and **the schema
+does not promote itself**.
+
+1. Run the app once against Development so SwiftData creates the record types
+2. [CloudKit Console](https://icloud.developer.apple.com/) → your container →
+   *Schema* → confirm `CD_Note`, `CD_Block`, `CD_MetricEntry`, `CD_Version`,
+   `CD_AudioAsset`, `CD_Folder`, `CD_Tag`
+3. **Deploy Schema to Production**
+
+TestFlight builds use Production. Skip this and testers get an app that never
+syncs, with nothing explaining why. Re-deploy after any schema change — there
+has been one since §4, `AudioAsset.recording`.
+
+**Export compliance** is already answered: `ITSAppUsesNonExemptEncryption` is
+`false` in [Config/Info.plist](Config/Info.plist), so App Store Connect will not
+ask on every upload.
 
 ---
 
 ## Gate 6 — TestFlight
 
-### Internal testing — start here
+**Internal** — up to 100 testers, no beta review, live minutes after processing.
+Testers must already be Users on your team. Start here.
 
-Up to 100 testers, **no beta review**, available within minutes of processing.
-
-1. App Store Connect → your app → **TestFlight** → **Internal Testing**
-2. Create a group, add testers by Apple ID — they must already be **Users** on
-   your team (*Users and Access*), with at least Developer or Marketing role
-3. Assign the build
-
-Testers install [TestFlight](https://apps.apple.com/app/testflight/id899247664)
-and accept the invitation.
-
-### External testing — when you want people outside the team
-
-Up to 10,000 testers. Requires **Beta App Review**, usually a day or two.
-
-You need to provide:
-
-- **Beta App Description** — what it does
-- **Feedback email**
-- **What to Test** — per build
-- **Demo account** — *not applicable*. Verso has no accounts and no login, which
-  removes the single most common cause of beta review delay. Say so in the
-  review notes.
-
-You can then invite by email, or generate a **public link**.
+**External** — up to 10,000, requires Beta App Review. You need a beta
+description, a feedback email, and *What to Test*. **No demo account is
+needed**: Verso has no accounts and no login, which removes the single most
+common cause of review delay. Say so in the notes.
 
 ### What to actually test
 
-§9 and §10 name things that only a real device can answer. Worth putting in
-*What to Test* verbatim:
+Only a device can answer these:
 
-- Haptics — five authored patterns, none of which can be judged in a simulator
-- Apple Pencil — ink, hover, and Pro squeeze/double-tap
-- Face ID / Touch ID → vault unlock, and **change an enrolled face or finger**
-  and confirm the vault falls back to the passphrase
-- Place reminders — arrive somewhere, and confirm an inactive reminder explains
-  itself
-- Rest timers surviving backgrounding, and firing while the app is closed
+- The five authored haptic patterns
+- Apple Pencil ink, hover, and Pro squeeze/double-tap
+- Vault unlock — then **change an enrolled face or finger** and confirm it falls
+  back to the passphrase
+- Place reminders firing on arrival, and inactive ones explaining themselves
+- Rest timers surviving backgrounding and firing while the app is closed
 - Recording, then tapping a word or a stroke to seek playback
-- Sync — two devices, one iCloud account
-- No iCloud account, iCloud full, airplane mode, and a device with no Apple
-  Intelligence: all four must degrade gracefully
+- Sync across two devices on one iCloud account
+- No iCloud account / iCloud full / airplane mode / no Apple Intelligence — all
+  four must degrade gracefully
 - VoiceOver, Dynamic Type at AX5, Reduce Motion, Increase Contrast
 
 ---
 
-## Common first-upload failures
+## Things that will bite
+
+**`CODE_SIGNING_ALLOWED=NO` must never reach an archive.** It is used in
+`ios.yml` for the simulator build, where it is correct and costs nothing. In an
+archive it is a silent catastrophe: the build succeeds, export re-signs, the
+`.ipa` uploads and installs — but `CODE_SIGN_ENTITLEMENTS` is a *build setting*,
+and a build that skipped signing never processed it. The archive carries no
+entitlements, and export signs with only `application-identifier`,
+`team-identifier`, `get-task-allow` and `beta-reports-active`.
+
+For Verso that means App Groups and iCloud quietly gone. The app looks fine; the
+widget shows no notes and sync never happens. Nothing complains — App Store
+validation only checks entitlements that a *declared capability* requires, and
+neither triggers one. `scripts/verify-entitlements.sh` runs on every release for
+exactly this reason.
+
+**`altool` exits 0 on failure.** It prints `UPLOAD FAILED with 1 error` and
+returns success. The workflow captures the output and greps it; do not "simplify"
+that back to trusting the exit status.
+
+**Nothing auto-increments the build number.** `manageAppVersionAndBuildNumber`
+is `false` in ExportOptions on purpose — left on, Xcode rewrites `CFBundleVersion`
+during export, so the number you dispatched is not the number Apple receives.
+
+**macOS runners bill at ten times Linux.** Both workflows are path-filtered.
+Keep them that way.
+
+### First-upload failures, decoded
 
 | Symptom | Cause |
 |---|---|
 | *Missing app icon* | Gate 2 |
-| *Invalid Bundle Identifier* | Widget bundle ID is not prefixed by the app's |
-| *Provisioning profile doesn't include entitlement* | A capability enabled in Xcode but not on the App ID, or vice versa |
-| *Invalid Code Signing Entitlements* — app group | The group exists in the portal but is not selected on **both** App IDs |
-| App installs, but syncs nothing | CloudKit schema not deployed to Production (3.6) |
-| Notifications arrive without the time-sensitive banner | Time Sensitive Notifications capability missing from the App ID |
-| Shortcuts is empty | `AppIntentsPackage` conformance — see the README; both targets need it |
+| *No profiles found* / *requires a development team* | No registered device — Gate 3.2 |
+| *Invalid Bundle Identifier* | Widget bundle ID not prefixed by the app's |
+| *Provisioning profile doesn't include entitlement* | Capability in the entitlements file but not on the App ID |
+| `verify-entitlements.sh` reports nothing signed | Signing was disabled during archive |
+| `verify-ipa.sh` says the profile does not grant a key | Profile issued before the capability was enabled; toggle it and let CI re-provision |
+| Installs but syncs nothing | CloudKit schema not deployed to Production |
+| Notifications arrive without a time-sensitive banner | Time Sensitive Notifications missing from the App ID |
+| Shortcuts is empty | `AppIntentsPackage` conformance — both targets need it |
 | Widget shows no notes | App Group mismatch between the two entitlements files |

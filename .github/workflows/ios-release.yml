@@ -1,0 +1,203 @@
+# Can we ship it?
+#
+# Manual dispatch only, and `upload` defaults to false — archiving to inspect a
+# build is a different question from sending it to Apple, and conflating them
+# means every investigation costs a build number.
+#
+# Kept apart from ios.yml so that a signing failure never looks like a compile
+# failure.
+
+name: iOS Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: "CFBundleVersion. Must be higher than the last one uploaded."
+        required: true
+        type: string
+      marketing_version:
+        description: "CFBundleShortVersionString, e.g. 1.0"
+        required: false
+        default: "1.0"
+        type: string
+      upload:
+        description: "Send to App Store Connect"
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: ios-release
+  cancel-in-progress: false
+
+env:
+  # What each binary must actually be signed with. The release fails if any of
+  # these is missing — see scripts/verify-entitlements.sh for why that check
+  # exists and what it caught.
+  APP_ENTITLEMENTS: >-
+    com.apple.security.application-groups
+    com.apple.developer.icloud-container-identifiers
+    com.apple.developer.icloud-services
+    aps-environment
+    com.apple.developer.usernotifications.time-sensitive
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select the newest Xcode
+        run: |
+          set -euo pipefail
+          XCODE=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          echo "Using $XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: Generate the project
+        run: |
+          set -euo pipefail
+          brew install xcodegen xcbeautify
+          xcodegen generate
+
+      - name: Stage the App Store Connect key
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          # One key does both jobs: xcodebuild uses it to create certificates
+          # and profiles on demand, and altool uses it to upload. That is why
+          # there is no exporting-a-.p12-and-base64ing-it-into-a-secret dance
+          # anywhere in this file.
+          #
+          # `~/private_keys` is one of the four locations altool searches.
+          mkdir -p ~/private_keys
+          printf '%s' "$ASC_KEY_P8" > ~/private_keys/AuthKey_${ASC_KEY_ID}.p8
+          chmod 600 ~/private_keys/AuthKey_${ASC_KEY_ID}.p8
+
+      - name: Archive
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          # NOTE: no CODE_SIGNING_ALLOWED=NO here, ever.
+          #
+          # It archives cleanly and export re-signs the result, so it looks
+          # correct — but CODE_SIGN_ENTITLEMENTS is a build setting, and a build
+          # that skipped signing never processed it. The archive would carry no
+          # entitlements and export would sign it with only the four the profile
+          # implies. App Groups and iCloud would vanish, and nothing would
+          # complain: App Store validation only checks entitlements that a
+          # declared capability requires, and neither of those triggers one.
+          #
+          # The verification step below exists so that if this ever regresses,
+          # it fails here instead of six months later.
+          set -o pipefail && xcodebuild archive \
+            -project Verso.xcodeproj \
+            -scheme Verso \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/Verso.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            MARKETING_VERSION="${{ inputs.marketing_version }}" \
+            CURRENT_PROJECT_VERSION="${{ inputs.build_number }}" \
+            | xcbeautify --renderer github-actions
+
+      - name: Verify what the archive was actually signed with
+        run: |
+          set -euo pipefail
+          chmod +x scripts/*.sh
+          APP="build/Verso.xcarchive/Products/Applications/Verso.app"
+          scripts/verify-entitlements.sh "$APP" $APP_ENTITLEMENTS
+          scripts/verify-entitlements.sh "$APP/PlugIns/VersoWidgets.appex" \
+            com.apple.security.application-groups \
+            com.apple.developer.icloud-container-identifiers
+
+      - name: Build ExportOptions
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          # The template is in git with a placeholder, because a team ID
+          # identifies an account and should not sit in a public repo.
+          sed "s/__TEAM_ID__/$APPLE_TEAM_ID/" Config/ExportOptions.plist > build/ExportOptions.plist
+          plutil -lint build/ExportOptions.plist
+
+      - name: Export .ipa
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          set -o pipefail && xcodebuild -exportArchive \
+            -archivePath build/Verso.xcarchive \
+            -exportPath build/export \
+            -exportOptionsPlist build/ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            | xcbeautify --renderer github-actions
+          ls -la build/export
+
+      - name: Verify the .ipa that would ship
+        run: |
+          set -euo pipefail
+          # Export re-signs, so the archive being right does not make the .ipa
+          # right. This checks the shipped binary *and* compares it against what
+          # the embedded profile actually grants.
+          scripts/verify-ipa.sh build/export/Verso.ipa $APP_ENTITLEMENTS
+
+      - name: Upload the build as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Verso-${{ inputs.build_number }}
+          path: |
+            build/export/Verso.ipa
+            build/export/DistributionSummary.plist
+          retention-days: 14
+
+      - name: Upload to App Store Connect
+        if: ${{ inputs.upload }}
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          # altool exits 0 on failure. It prints "UPLOAD FAILED with 1 error"
+          # and returns success, so trusting the exit status means a broken
+          # build reports green and never appears in TestFlight.
+          set +e
+          xcrun altool --upload-app \
+            --type ios \
+            --file build/export/Verso.ipa \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID" \
+            2>&1 | tee upload.log
+          set -e
+
+          if grep -qiE "UPLOAD FAILED|Validation failed|ERROR ITMS" upload.log; then
+              echo "::error::altool reported a failure. See the log above."
+              exit 1
+          fi
+          if ! grep -qi "UPLOAD SUCCEEDED" upload.log; then
+              echo "::error::altool did not report success. Treating as a failure."
+              exit 1
+          fi
+          echo "▸ Uploaded build ${{ inputs.build_number }}."
+          echo "▸ Processing usually takes 5–60 minutes. TestFlight will email when it is ready."
+
+      - name: Remove the key
+        if: always()
+        run: rm -rf ~/private_keys

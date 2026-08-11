@@ -1,0 +1,114 @@
+# Does it compile, and do the tests pass?
+#
+# No credentials. Nothing here can fail for a signing reason, which is the whole
+# point of keeping it apart from the release workflow: a red tick on this one
+# always means the code is wrong.
+
+name: iOS
+
+on:
+  # Spelled out twice rather than using a YAML anchor: the Actions parser does
+  # not support anchors, and fails in a way that looks like a triggering bug.
+  push:
+    branches: [main]
+    paths:
+      - "VersoKit/**"
+      - "Verso/**"
+      - "VersoWidgets/**"
+      - "VersoTests/**"
+      - "Config/**"
+      - "project.yml"
+      - ".github/workflows/ios.yml"
+  pull_request:
+    paths:
+      - "VersoKit/**"
+      - "Verso/**"
+      - "VersoWidgets/**"
+      - "VersoTests/**"
+      - "Config/**"
+      - "project.yml"
+      - ".github/workflows/ios.yml"
+  # So a change to the workflow itself can be tried without a push.
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    # macOS minutes bill at ten times Linux, which is why the triggers above
+    # are path-filtered rather than firing on every README edit.
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select the newest Xcode
+        # The runner's default lags the newest SDK, often by a whole major
+        # version. Verso needs the iOS 26 SDK, so pick explicitly rather than
+        # inheriting whatever the image happens to prefer.
+        run: |
+          set -euo pipefail
+          XCODE=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          echo "Using $XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+          xcodebuild -showsdks | grep -i ios
+
+      - name: Cache SwiftPM
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          key: spm-${{ runner.os }}-${{ hashFiles('VersoKit/Package.swift') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      - name: Generate the project
+        run: |
+          set -euo pipefail
+          brew install xcodegen xcbeautify
+          xcodegen generate
+          echo "--- targets ---"
+          xcodebuild -list -project Verso.xcodeproj
+
+      - name: Pick a simulator
+        id: sim
+        # Hard-coding a device name breaks whenever the image's simulator set
+        # changes. Take the newest available iPhone instead.
+        run: |
+          set -euo pipefail
+          UDID=$(xcrun simctl list devices available --json | python3 -c "
+          import json, sys
+          runtimes = json.load(sys.stdin)['devices']
+          phones = [d for rt in sorted(runtimes) for d in runtimes[rt] if 'iPhone' in d['name']]
+          if not phones:
+              sys.exit('no iPhone simulator available')
+          print(phones[-1]['udid'])
+          ")
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl list devices available | grep -A2 iOS | head -20
+
+      - name: Build and test
+        run: |
+          set -euo pipefail
+          # CODE_SIGNING_ALLOWED=NO is correct *here* and fatal in a release
+          # archive. A simulator build is never signed, so disabling it costs
+          # nothing; an archive that skips signing also skips processing
+          # CODE_SIGN_ENTITLEMENTS, and ships with none. See ios-release.yml.
+          set -o pipefail && xcodebuild test \
+            -project Verso.xcodeproj \
+            -scheme Verso \
+            -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -resultBundlePath TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcbeautify --renderer github-actions
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TestResults
+          path: TestResults.xcresult
+          retention-days: 7
