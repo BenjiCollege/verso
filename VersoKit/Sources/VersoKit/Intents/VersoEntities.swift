@@ -190,6 +190,42 @@ extension TemplateEntityQuery: EntityStringQuery {
     }
 }
 
+/// Synchronous store reads, for widget timeline providers.
+///
+/// `TimelineProvider`'s callbacks are completion-based and its completion
+/// closures are not `Sendable`, so hopping to `IntentDataSource` to fetch would
+/// mean passing a non-sending closure across an isolation boundary — which
+/// Swift 6 refuses, correctly.
+///
+/// A widget's read is small, local and one-shot, so doing it on the calling
+/// thread is both simpler and faster than arranging a hop. `ModelContext` is
+/// created and used here and never escapes.
+enum WidgetDataSource {
+
+    static func recentNotes(limit: Int) -> [NoteEntity.Snapshot] {
+        let context = ModelContext(VersoIntentContainer.shared)
+        let descriptor = FetchDescriptor<Note>(
+            predicate: #Predicate<Note> { !$0.isTrashed && !$0.isHidden },
+            sortBy: [SortDescriptor(\Note.modifiedAt, order: .reverse)]
+        )
+
+        let notes = (try? context.fetch(descriptor)) ?? []
+        return notes
+            // A widget is on the Home Screen and the Lock Screen. Section 7's
+            // exclusions matter more here than anywhere.
+            .filter { VaultPolicy.isEligibleForIndexing($0) }
+            .prefix(limit)
+            .map { note in
+                NoteEntity.Snapshot(
+                    id: note.id,
+                    title: note.title,
+                    summary: VaultPolicy.listPreview(for: note),
+                    modifiedAt: note.modifiedAt
+                )
+            }
+    }
+}
+
 /// The container intents and widgets use.
 ///
 /// Both run outside the app process, so they cannot borrow the app's. It is an

@@ -47,23 +47,15 @@ struct RecentNotesProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (RecentNotesEntry) -> Void) {
-        Task {
-            completion(RecentNotesEntry(date: Date(), notes: await load(limit: 6)))
-        }
+        completion(RecentNotesEntry(date: Date(), notes: WidgetDataSource.recentNotes(limit: 6)))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<RecentNotesEntry>) -> Void) {
-        Task {
-            let entry = RecentNotesEntry(date: Date(), notes: await load(limit: 6))
-            // Notes change when the user changes them, not on a clock. A
-            // half-hourly refresh keeps the widget honest without spending the
-            // budget the system would rather it saved.
-            completion(Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(1_800))))
-        }
-    }
-
-    private func load(limit: Int) async -> [NoteEntity.Snapshot] {
-        await IntentDataSource(modelContainer: VersoIntentContainer.shared).notes(limit: limit)
+        let entry = RecentNotesEntry(date: Date(), notes: WidgetDataSource.recentNotes(limit: 6))
+        // Notes change when the user changes them, not on a clock. A half-hourly
+        // refresh keeps the widget honest without spending the budget the system
+        // would rather it saved.
+        completion(Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(1_800))))
     }
 }
 
