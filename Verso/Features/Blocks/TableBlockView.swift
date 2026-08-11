@@ -44,28 +44,41 @@ struct TableBlockView: View {
 
     // MARK: - Rows
 
+    /// The title is an editable field and the column's type and deletion live
+    /// behind a separate button. A `TextField` used as a `Menu` label cannot be
+    /// typed into — the menu swallows the tap.
     private func headerRow(_ payload: Binding<TablePayload>) -> some View {
         GridRow {
             ForEach(Array(payload.wrappedValue.columns.enumerated()), id: \.element.id) { index, column in
-                Menu {
-                    Picker("Type", selection: payload.columns[index].kind) {
-                        ForEach(TablePayload.ColumnKind.allCases, id: \.self) { kind in
-                            Text(kind.displayName).tag(kind)
+                HStack(spacing: Layout.Space.tight) {
+                    TextField(
+                        "Column",
+                        text: payload.columns[index].title,
+                        prompt: Text("Column").foregroundStyle(theme.inkTertiary)
+                    )
+                    .textFieldStyle(.plain)
+                    .accessibilityLabel(Text("Column \(index + 1) title"))
+
+                    Menu {
+                        Picker("Type", selection: payload.columns[index].kind) {
+                            ForEach(TablePayload.ColumnKind.allCases, id: \.self) { kind in
+                                Text(kind.displayName).tag(kind)
+                            }
                         }
+                        Button("Delete Column", role: .destructive) {
+                            removeColumn(at: index, payload: payload)
+                        }
+                    } label: {
+                        Image(systemName: "chevron.down")
+                            .frame(minWidth: Layout.Space.regular, minHeight: Layout.minimumHitTarget)
+                            .contentShape(.rect)
                     }
-                    Button("Delete Column", role: .destructive) {
-                        removeColumn(at: index, payload: payload)
-                    }
-                } label: {
-                    TextField("Column", text: payload.columns[index].title)
-                        .textFieldStyle(.plain)
-                        .versoText(.metadata)
-                        .foregroundStyle(theme.inkSecondary)
-                        .frame(width: Self.columnWidth, alignment: .leading)
-                        .padding(Layout.Space.tight)
+                    .accessibilityLabel(Text("Options for column \(column.title.isEmpty ? "\(index + 1)" : column.title)"))
                 }
-                .accessibilityLabel(Text("Column \(index + 1)"))
-                .accessibilityValue(Text(column.title))
+                .versoText(.metadata)
+                .foregroundStyle(theme.inkSecondary)
+                .frame(width: Self.columnWidth, alignment: .leading)
+                .padding(Layout.Space.tight)
             }
         }
         .overlay(alignment: .bottom) {
