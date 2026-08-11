@@ -1,3 +1,4 @@
+import CoreSpotlight
 import SwiftData
 import SwiftUI
 
@@ -20,6 +21,8 @@ struct VersoApp: App {
     @State private var intelligence = IntelligenceService()
     @State private var recording = RecordingSession()
     @State private var replay = ReplaySession()
+    @State private var spotlight: SpotlightIndexer
+    @State private var navigation = NavigationRequest.shared
     @State private var schedule: ScheduleService
     @State private var geofences: GeofenceService
     @State private var vault: VaultService
@@ -37,6 +40,7 @@ struct VersoApp: App {
             initialValue: GeofenceService(container: persistence.container, authority: authority)
         )
         _vault = State(initialValue: VaultService(container: persistence.container))
+        _spotlight = State(initialValue: SpotlightIndexer(container: persistence.container))
     }
 
     var body: some Scene {
@@ -66,6 +70,27 @@ struct VersoApp: App {
                 .environment(intelligence)
                 .environment(recording)
                 .environment(replay)
+                .environment(navigation)
+                .environment(spotlight)
+                // Widgets, controls and the Lock Screen all arrive as a URL.
+                .onOpenURL { url in
+                    switch VersoURL.destination(for: url) {
+                    case .note(let id): navigation.openNote(id: id)
+                    case .capture, .none: break
+                    }
+                }
+                // Handoff from another device, and Spotlight results, resolve
+                // to the same place.
+                .onContinueUserActivity(VersoActivity.openNote) { activity in
+                    guard let id = VersoActivity.noteID(from: activity) else { return }
+                    navigation.openNote(id: id)
+                }
+                .onContinueUserActivity(CSSearchableItemActionType) { activity in
+                    guard let raw = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String,
+                          let id = UUID(uuidString: raw)
+                    else { return }
+                    navigation.openNote(id: id)
+                }
                 .environment(schedule)
                 .environment(geofences)
                 .environment(geofences.authority)
@@ -77,6 +102,10 @@ struct VersoApp: App {
                     haptics.prepare()
                     await schedule.refresh()
                     await geofences.refresh()
+                    // Rebuilt rather than patched: a stale Spotlight entry for
+                    // a note that has since been locked is a leak, not an
+                    // inconvenience.
+                    await spotlight.reindex()
                 }
         }
         .modelContainer(persistence.container)

@@ -8,17 +8,17 @@ state of the build.
 
 ---
 
-## Status: Phases 1–11 complete, not yet compiled
+## Status: all twelve phases written, none of it compiled
 
-Phases 1 (Foundation), 2 (Editor), 3 (Data blocks), 4 (Time and place),
-5 (Templates), 6 (Fore-edge and history), 7 (Reveal and share), 8 (Vault),
-9 (Intelligence), 10 (Ink and audio) and 11 (Documents) are written in full.
-None of it has **ever been compiled, run, or checked against the iOS 26 SDK**,
-because it was authored on Windows 11 with no Xcode, no Swift toolchain, and no
-simulator available.
+Every phase in §7 is written. **None of it has ever been compiled, run, or
+checked against the iOS 26 SDK**, because it was authored on Windows 11 with no
+Xcode, no Swift toolchain, and no simulator available.
 
-Only Phase 12 remains: App Intents, widgets, Control Center, Spotlight,
-Handoff, drag and drop, iPad multi-window — and the §10 submission checklist.
+The submission checklist from §10 is in [SUBMISSION.md](SUBMISSION.md), which
+separates what is done in the repo from what needs a Mac or needs you.
+
+**Start with the porting notes below.** The first build will not succeed; the
+tables say where to look, ordered by how much each item blocks.
 
 ### One change to the §4 data model
 
@@ -186,6 +186,19 @@ Phase 11 rests on PDFKit geometry, where a sign error is silent and total:
 | `PDFAnnotation(bounds:forType:.ink)` with `add(_ path:)` | Layered export. Confirm the annotations are selectable in Preview and Adobe Acrobat, not just visible. |
 | `PKDrawing.transformed(using:)` | Ink is stored in page space and scaled for display; a wrong scale is invisible until the window resizes. |
 
+Phase 12's project-file work is the single most likely thing in the repo to need
+fixing, and the fix is well understood:
+
+| Area | What to verify |
+|---|---|
+| **The widget target's source membership** | `VersoWidgets` claims the `Verso` synchronized group with a `PBXFileSystemSynchronizedBuildFileExceptionSet` excluding `App/`, `Features/` and the few `Core` files that import views. Hand-writing that is fragile. **If Xcode rejects it, or the extension fails to compile, the proper fix is to extract `Core/` into a local Swift package that both targets depend on** — which is what this would have been from the start on a Mac. |
+| `groupContainer: .identifier(...)` on `ModelConfiguration` | The app, widget and intents all read one store through the app group. Getting this wrong means three processes quietly using three different databases. |
+| `ControlWidget` / `ControlWidgetButton` | Control Centre and the Action Button. |
+| `AppShortcutsProvider` phrases | `\(.applicationName)` must appear in every phrase or the build fails. |
+| `@Parameter` on `AppIntent` with a custom `AppEntity` | `NoteEntity` and `TemplateEntity` and their `EntityStringQuery` conformances. |
+| `.userActivity(_:)` and `onContinueUserActivity` | Handoff both ways, plus `CSSearchableItemActionType` for Spotlight taps. |
+| `net.daringfireball.markdown` UTI | Used for dragging a note out; falls back to plain text if unavailable. |
+
 ### Known limitations
 
 Deliberate, not oversights:
@@ -332,7 +345,19 @@ All flagged rather than silently taken:
     hierarchy, which is fragile and would not let the Phase 10 ink canvas be
     reused. The cost is that page zoom is scroll-based rather than PDFView's
     pinch-to-zoom.
-28. **No `UIBackgroundModes: audio`.** §7 specifies `AVAudioSession` + a local
+28. **"Start workout" is the template intent with a parameter, not its own
+    intent.** §7 lists it alongside "open template". Giving it a dedicated
+    intent would mean naming `strength-session` in Swift, which is the
+    `if templateID ==` §2 forbids wearing an Intent's clothes. A user who wants
+    "Hey Siri, start my workout" builds that Shortcut in one step, choosing the
+    template themselves — and it keeps working when they switch templates.
+29. **A dragged note leaves as Markdown, not a link.** A note dropped into Mail
+    should arrive as something the recipient can read, not a URL that only
+    resolves on the device it came from.
+30. **Spotlight is rebuilt, not patched.** Incremental updates drift, and a
+    stale index entry for a note that has since been locked is a leak rather
+    than an inconvenience — so every refresh deletes the excluded ones by name.
+31. **No `UIBackgroundModes: audio`.** §7 specifies `AVAudioSession` + a local
    notification for rest timers. The session here only makes the completion
    sound audible over music and with the ringer switch off. Background delivery
    is the notification's job — claiming the audio background mode for a notes
@@ -404,5 +429,10 @@ Adding a theme or a paper stock is likewise one JSON file in
 | `InkAudioPayloadTests` | Round-trips, height clamping, templates keeping shape and dropping content, AAC mono 32kbps |
 | `DocumentAnnotationTests` | Normalised rects surviving a resize, ink per page, clearing leaving nothing behind, highlighted text in reading order |
 | `AttachmentPayloadTests` | Round-trip, clamping, highlights being what search and export see, templates dropping the document |
+| `VersoURLTests` | Deep links round-tripping, foreign and malformed ones resolving to nothing |
+| `ActivityEligibilityTests` | Locked, hidden and trashed notes advertised to neither Handoff nor Spotlight, and their titles not travelling either |
+| `NoteTransferTests` | A dragged note carrying readable Markdown; a locked one carrying nothing |
+| `SpotlightSourceTests` | Excluded notes coming back as *deletions* rather than omissions |
+| `IntentTests` | Shortcuts seeing every template with no template named in Swift; locked notes opaque to intents |
 
 Still owed by §9: vault encrypt/decrypt, which arrives with Phase 8.

@@ -11,17 +11,51 @@
 		VE00F0000000000000000002 /* VersoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VersoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		VE00F0000000000000000003 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		VE00F0000000000000000004 /* Verso.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Verso.entitlements; sourceTree = "<group>"; };
+		VE00F0000000000000000005 /* VersoWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VersoWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		VE00F0000000000000000006 /* VersoWidgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "VersoWidgets-Info.plist"; sourceTree = "<group>"; };
+		VE00F0000000000000000007 /* VersoWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VersoWidgets.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXBuildFile section */
+		VE00B0000000000000000001 /* VersoWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = VE00F0000000000000000005 /* VersoWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		VE00E0000000000000000001 /* Exceptions for "Verso" folder in "VersoWidgets" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				App,
+				Features,
+				"Core/Blocks/BlockRenderer.swift",
+				"Core/Blocks/BlockPayloadEditor.swift",
+				"Core/Blocks/AttributedText.swift",
+				"Core/Metrics/MetricChart.swift",
+				"Core/Motion/MotionResolver.swift",
+				"Core/Motion/RevealEngine.swift",
+				"Core/Theming/ThemeEnvironment.swift",
+				"Core/Theming/Typography.swift",
+			);
+			target = VE00T0000000000000000003 /* VersoWidgets */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		VE00S0000000000000000001 /* Verso */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				VE00E0000000000000000001 /* Exceptions for "Verso" folder in "VersoWidgets" target */,
+			);
 			path = Verso;
 			sourceTree = "<group>";
 		};
 		VE00S0000000000000000002 /* VersoTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = VersoTests;
+			sourceTree = "<group>";
+		};
+		VE00S0000000000000000003 /* VersoWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = VersoWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -41,6 +75,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		VE00R0000000000000000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -48,6 +89,7 @@
 			isa = PBXGroup;
 			children = (
 				VE00S0000000000000000001 /* Verso */,
+				VE00S0000000000000000003 /* VersoWidgets */,
 				VE00S0000000000000000002 /* VersoTests */,
 				VE00G0000000000000000002 /* Config */,
 				VE00G0000000000000000001 /* Products */,
@@ -59,6 +101,7 @@
 			children = (
 				VE00F0000000000000000001 /* Verso.app */,
 				VE00F0000000000000000002 /* VersoTests.xctest */,
+				VE00F0000000000000000005 /* VersoWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -68,6 +111,8 @@
 			children = (
 				VE00F0000000000000000003 /* Info.plist */,
 				VE00F0000000000000000004 /* Verso.entitlements */,
+				VE00F0000000000000000006 /* VersoWidgets-Info.plist */,
+				VE00F0000000000000000007 /* VersoWidgets.entitlements */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -82,10 +127,12 @@
 				VE00P0000000000000000001 /* Sources */,
 				VE00R0000000000000000001 /* Frameworks */,
 				VE00P0000000000000000002 /* Resources */,
+				VE00P0000000000000000005 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				VE00D0000000000000000002 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				VE00S0000000000000000001 /* Verso */,
@@ -116,7 +163,42 @@
 			productReference = VE00F0000000000000000002 /* VersoTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		VE00T0000000000000000003 /* VersoWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = VE00L0000000000000000004 /* Build configuration list for PBXNativeTarget "VersoWidgets" */;
+			buildPhases = (
+				VE00P0000000000000000006 /* Sources */,
+				VE00R0000000000000000003 /* Frameworks */,
+				VE00P0000000000000000007 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				VE00S0000000000000000003 /* VersoWidgets */,
+				VE00S0000000000000000001 /* Verso */,
+			);
+			name = VersoWidgets;
+			productName = VersoWidgets;
+			productReference = VE00F0000000000000000005 /* VersoWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		VE00P0000000000000000005 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				VE00B0000000000000000001 /* VersoWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXProject section */
 		VE00J0000000000000000001 /* Project object */ = {
@@ -132,6 +214,9 @@
 					VE00T0000000000000000002 = {
 						CreatedOnToolsVersion = 26.0;
 						TestTargetID = VE00T0000000000000000001;
+					};
+					VE00T0000000000000000003 = {
+						CreatedOnToolsVersion = 26.0;
 					};
 				};
 			};
@@ -150,6 +235,7 @@
 			projectRoot = "";
 			targets = (
 				VE00T0000000000000000001 /* Verso */,
+				VE00T0000000000000000003 /* VersoWidgets */,
 				VE00T0000000000000000002 /* VersoTests */,
 			);
 		};
@@ -164,6 +250,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		VE00P0000000000000000004 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		VE00P0000000000000000007 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -187,6 +280,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		VE00P0000000000000000006 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -194,6 +294,11 @@
 			isa = PBXTargetDependency;
 			target = VE00T0000000000000000001 /* Verso */;
 			targetProxy = VE00X0000000000000000001 /* PBXContainerItemProxy */;
+		};
+		VE00D0000000000000000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = VE00T0000000000000000003 /* VersoWidgets */;
+			targetProxy = VE00X0000000000000000002 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -204,6 +309,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = VE00T0000000000000000001;
 			remoteInfo = Verso;
+		};
+		VE00X0000000000000000002 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = VE00J0000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = VE00T0000000000000000003;
+			remoteInfo = VersoWidgets;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -358,6 +470,50 @@
 			};
 			name = Release;
 		};
+		VE00C0000000000000000007 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/VersoWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Config/VersoWidgets-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.verso.notes.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		VE00C0000000000000000008 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/VersoWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Config/VersoWidgets-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.verso.notes.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -384,6 +540,15 @@
 			buildConfigurations = (
 				VE00C0000000000000000005 /* Debug */,
 				VE00C0000000000000000006 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		VE00L0000000000000000004 /* Build configuration list for PBXNativeTarget "VersoWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				VE00C0000000000000000007 /* Debug */,
+				VE00C0000000000000000008 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

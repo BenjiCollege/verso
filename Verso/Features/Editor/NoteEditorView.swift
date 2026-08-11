@@ -114,6 +114,22 @@ struct NoteEditorView: View {
         .onChange(of: scrubIndex) { _, index in
             scrubbedSnapshot = index.flatMap { versionStore.snapshot(at: $0, of: note) }
         }
+        // Handoff and Spotlight both hang off this. `VersoActivity` decides
+        // eligibility, so a locked note is advertised nowhere.
+        .userActivity(VersoActivity.openNote) { activity in
+            let built = VersoActivity.activity(for: note)
+            activity.title = built.title
+            activity.userInfo = built.userInfo
+            activity.isEligibleForHandoff = built.isEligibleForHandoff
+            activity.isEligibleForSearch = built.isEligibleForSearch
+            activity.isEligibleForPrediction = built.isEligibleForPrediction
+        }
+        // Dropping text or a file into the page appends a block, so a snippet
+        // from another app lands where it was aimed.
+        .dropDestination(for: String.self) { items, _ in
+            appendDroppedText(items.joined(separator: "\n\n"))
+            return true
+        }
         .task {
             haptics.prepare()
             // The first version is the note as it was when opened, so there is
@@ -465,6 +481,25 @@ struct NoteEditorView: View {
     }
 
     // MARK: - Mutation
+
+    /// Dropped text is structured the same way a paste is, so a list dropped in
+    /// arrives as a list.
+    private func appendDroppedText(_ text: String) {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+
+        Task { @MainActor in
+            let captured = await intelligence.structure(text)
+            guard let blocks = try? TemplateInstantiator.makeBlocks(from: captured.makeTemplate()) else { return }
+
+            motion.run(.settle) {
+                for block in blocks {
+                    context.insert(block)
+                    note.append(block)
+                }
+                note.touch()
+            }
+        }
+    }
 
     private func appendBlock(of type: BlockType) {
         guard let block = try? BlockRegistry.shared.makeBlock(of: type) else { return }

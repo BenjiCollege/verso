@@ -43,17 +43,26 @@ enum VersoModelContainer {
     /// that fails. A missing or full iCloud account does *not* land here —
     /// SwiftData still builds the container and simply stops syncing — but a
     /// misconfigured entitlement or unreadable store file does.
-    static func makeShared() -> Result {
-        let cloudConfiguration = ModelConfiguration(
-            "Verso",
-            schema: schema,
-            isStoredInMemoryOnly: false,
-            allowsSave: true,
-            cloudKitDatabase: .private(cloudKitContainerIdentifier)
-        )
+    /// The app group the widget and the intent extensions read through.
+    ///
+    /// Both run in their own processes, so the store has to live somewhere all
+    /// three can reach. Declared in `Verso.entitlements`.
+    static let appGroupIdentifier = "group.com.verso.notes"
 
+    /// The one true configuration. Used by the app, the widgets and App Intents
+    /// alike, so there is no way for them to end up looking at different stores.
+    static let sharedConfiguration = ModelConfiguration(
+        "Verso",
+        schema: schema,
+        isStoredInMemoryOnly: false,
+        allowsSave: true,
+        groupContainer: .identifier(appGroupIdentifier),
+        cloudKitDatabase: .private(cloudKitContainerIdentifier)
+    )
+
+    static func makeShared() -> Result {
         do {
-            let container = try ModelContainer(for: schema, configurations: [cloudConfiguration])
+            let container = try ModelContainer(for: schema, configurations: [sharedConfiguration])
             return Result(container: container, mode: .cloudKit)
         } catch {
             logger.error("CloudKit-backed store unavailable: \(error.localizedDescription, privacy: .public)")
@@ -64,6 +73,7 @@ enum VersoModelContainer {
             schema: schema,
             isStoredInMemoryOnly: false,
             allowsSave: true,
+            groupContainer: .identifier(appGroupIdentifier),
             cloudKitDatabase: .none
         )
 

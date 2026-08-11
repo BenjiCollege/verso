@@ -6,6 +6,9 @@ struct LibraryView: View {
     @Environment(\.theme) private var theme
     @Environment(\.motion) private var motion
     @Environment(HapticEngine.self) private var haptics
+    @Environment(NavigationRequest.self) private var navigation
+
+    @State private var path = NavigationPath()
 
     /// Sorted by recency only: `Bool` isn't `Comparable`, so pinning can't be a
     /// `SortDescriptor`. Pinned notes are lifted into their own section below.
@@ -27,7 +30,7 @@ struct LibraryView: View {
     @State private var failure: String?
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Group {
                 if !query.isEmpty {
                     searchResults
@@ -49,6 +52,16 @@ struct LibraryView: View {
             .searchable(text: $query, prompt: Text("Search notes"))
             .task(id: query) {
                 await runSearch()
+            }
+            // An intent, a widget tap, a Spotlight result or a Handoff can all
+            // arrive before this view exists, so they are buffered and acted on
+            // here rather than pushed from outside.
+            .onChange(of: navigation.pending) { _, request in
+                guard let request,
+                      let note = notes.first(where: { $0.id == request.noteID })
+                else { return }
+                path.append(note)
+                navigation.clear()
             }
             .sheet(isPresented: $isChoosingTemplate) {
                 TemplateGalleryView(onSelect: createNote)
@@ -112,6 +125,10 @@ struct LibraryView: View {
             }
             .tint(theme.accent)
         }
+        // Dragged out as Markdown, so a note dropped into Mail or Messages
+        // arrives as something legible rather than as a link that only works
+        // on this device. A locked note carries nothing.
+        .draggable(NoteTransfer(note: note))
     }
 
     /// Semantic where the device supports it, lexical everywhere. Both paths
