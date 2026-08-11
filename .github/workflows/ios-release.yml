@@ -80,6 +80,49 @@ jobs:
           printf '%s' "$ASC_KEY_P8" > ~/private_keys/AuthKey_${ASC_KEY_ID}.p8
           chmod 600 ~/private_keys/AuthKey_${ASC_KEY_ID}.p8
 
+          # Does it parse? A secret pasted with mangled newlines, or truncated,
+          # produces a file that looks present and fails eight minutes later
+          # inside the archive, as an authentication error that never mentions
+          # the key. `-noout` so nothing is ever printed to the log.
+          if ! openssl pkey -in ~/private_keys/AuthKey_${ASC_KEY_ID}.p8 -noout 2>/dev/null; then
+            echo "::error::ASC_KEY_P8 is not a readable private key. Re-upload it with:"
+            echo "::error::gh secret set ASC_KEY_P8 < AuthKey_${ASC_KEY_ID}.p8"
+            exit 1
+          fi
+          echo "Key AuthKey_${ASC_KEY_ID}.p8 staged and parses."
+
+      - name: Check the credentials agree before spending an archive on them
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          # The key file can be perfectly well-formed and still be the wrong
+          # key — the `.p8` for one key ID looks exactly like the `.p8` for
+          # another. Nothing local can tell them apart; only Apple can. This
+          # asks, in about two seconds, before the archive spends eight minutes
+          # finding out.
+          #
+          # Output is grepped rather than trusted to the exit code, for the same
+          # reason the upload step does it: altool reports failure in its text
+          # far more reliably than in its status.
+          set +e
+          OUT=$(xcrun altool --list-apps \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID" 2>&1)
+          STATUS=$?
+          set -e
+
+          if [ $STATUS -ne 0 ] || grep -qiE "Unable to authenticate|NOT_AUTHORIZED|401|Forbidden" <<<"$OUT"; then
+            echo "::error::App Store Connect rejected these credentials."
+            echo "::error::Check ASC_KEY_ID matches the key the .p8 was downloaded for,"
+            echo "::error::and that ASC_ISSUER_ID is the Issuer ID from the same page."
+            # The response can name the team; the key itself is never in it.
+            sed -e 's/[A-Za-z0-9+/]\{40,\}/[redacted]/g' <<<"$OUT" | head -20
+            exit 1
+          fi
+          echo "Credentials accepted."
+
       - name: Archive
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
