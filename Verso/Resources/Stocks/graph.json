@@ -1,0 +1,9 @@
+{
+  "kind": "stock",
+  "id": "graph",
+  "name": "Graph",
+  "pattern": "grid",
+  "spacingMultiple": 0.5,
+  "lineWidth": 0.5,
+  "opacity": 0.55
+}

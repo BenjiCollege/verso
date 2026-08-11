@@ -1,0 +1,16 @@
+{
+  "kind": "theme",
+  "id": "linen",
+  "name": "Linen",
+  "appearance": "light",
+  "grain": 0.05,
+  "palette": {
+    "stock": "#EDEEEA",
+    "ink": "#22262A",
+    "inkSecondary": "#646A6E",
+    "accent": "#5F7A6B",
+    "rule": "#D5D8D2",
+    "edge": "#7C837C",
+    "gilt": "#7C837C"
+  }
+}

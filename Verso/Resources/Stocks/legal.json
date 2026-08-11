@@ -1,0 +1,15 @@
+{
+  "kind": "stock",
+  "id": "legal",
+  "name": "Legal",
+  "pattern": "horizontalRules",
+  "spacingMultiple": 1.0,
+  "lineWidth": 0.5,
+  "opacity": 0.9,
+  "marginRule": {
+    "inset": 28.0,
+    "width": 1.0,
+    "opacity": 0.5,
+    "usesAccent": true
+  }
+}

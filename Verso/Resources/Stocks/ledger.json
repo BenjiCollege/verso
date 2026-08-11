@@ -1,0 +1,10 @@
+{
+  "kind": "stock",
+  "id": "ledger",
+  "name": "Ledger",
+  "pattern": "grid",
+  "spacingMultiple": 1.0,
+  "lineWidth": 0.5,
+  "opacity": 0.5,
+  "alternateRowTint": 0.35
+}

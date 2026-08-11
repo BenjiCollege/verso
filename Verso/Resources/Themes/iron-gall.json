@@ -1,0 +1,16 @@
+{
+  "kind": "theme",
+  "id": "iron-gall",
+  "name": "Iron Gall",
+  "appearance": "light",
+  "grain": 0.06,
+  "palette": {
+    "stock": "#E8E4DA",
+    "ink": "#16181C",
+    "inkSecondary": "#5A5F66",
+    "accent": "#2E4B7A",
+    "rule": "#C4BEB0",
+    "edge": "#3A3226",
+    "gilt": "#8B7355"
+  }
+}

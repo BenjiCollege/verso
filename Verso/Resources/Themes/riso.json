@@ -1,0 +1,17 @@
+{
+  "kind": "theme",
+  "id": "riso",
+  "name": "Riso",
+  "appearance": "light",
+  "grain": 0.04,
+  "palette": {
+    "stock": "#FAF8F3",
+    "ink": "#1B1B1B",
+    "inkSecondary": "#6B6B6B",
+    "accent": "#FF48B0",
+    "accentAlternate": "#0B4BD4",
+    "rule": "#E4DFD4",
+    "edge": "#FF48B0",
+    "gilt": "#FF48B0"
+  }
+}

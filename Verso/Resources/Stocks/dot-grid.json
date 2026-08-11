@@ -1,0 +1,9 @@
+{
+  "kind": "stock",
+  "id": "dot-grid",
+  "name": "Dot Grid",
+  "pattern": "dots",
+  "spacingMultiple": 1.0,
+  "opacity": 0.7,
+  "dotRadius": 0.75
+}

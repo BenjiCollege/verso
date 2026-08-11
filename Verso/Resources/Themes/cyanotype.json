@@ -1,0 +1,16 @@
+{
+  "kind": "theme",
+  "id": "cyanotype",
+  "name": "Cyanotype",
+  "appearance": "dark",
+  "grain": 0.05,
+  "palette": {
+    "stock": "#17384F",
+    "ink": "#F2F6F7",
+    "inkSecondary": "#9DC0CE",
+    "accent": "#F2F6F7",
+    "rule": "#245570",
+    "edge": "#0E2534",
+    "gilt": "#0E2534"
+  }
+}

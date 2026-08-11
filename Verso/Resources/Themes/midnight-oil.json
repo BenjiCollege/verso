@@ -1,0 +1,16 @@
+{
+  "kind": "theme",
+  "id": "midnight-oil",
+  "name": "Midnight Oil",
+  "appearance": "dark",
+  "grain": 0.08,
+  "palette": {
+    "stock": "#12141A",
+    "ink": "#E6E3DC",
+    "inkSecondary": "#9C9A94",
+    "accent": "#C9A227",
+    "rule": "#252932",
+    "edge": "#0A0B0F",
+    "gilt": "#C9A227"
+  }
+}

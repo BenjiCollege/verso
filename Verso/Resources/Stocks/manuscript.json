@@ -1,0 +1,10 @@
+{
+  "kind": "stock",
+  "id": "manuscript",
+  "name": "Manuscript",
+  "pattern": "horizontalRules",
+  "spacingMultiple": 1.5,
+  "lineWidth": 0.5,
+  "opacity": 0.9,
+  "showsBaselineGuides": true
+}

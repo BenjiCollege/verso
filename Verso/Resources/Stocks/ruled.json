@@ -1,0 +1,9 @@
+{
+  "kind": "stock",
+  "id": "ruled",
+  "name": "Ruled",
+  "pattern": "horizontalRules",
+  "spacingMultiple": 1.0,
+  "lineWidth": 0.5,
+  "opacity": 0.9
+}

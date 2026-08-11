@@ -1,0 +1,16 @@
+{
+  "kind": "theme",
+  "id": "foxed",
+  "name": "Foxed",
+  "appearance": "light",
+  "grain": 0.10,
+  "palette": {
+    "stock": "#DED3BF",
+    "ink": "#241C14",
+    "inkSecondary": "#6A5A46",
+    "accent": "#7B2E22",
+    "rule": "#C3B398",
+    "edge": "#4A3524",
+    "gilt": "#4A3524"
+  }
+}
