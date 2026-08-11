@@ -304,7 +304,7 @@ struct GeofenceCandidateBuilderTests {
         _ = try attach(PlacePayload(name: "Shop", coordinate: .init(latitude: 51.5, longitude: -0.12)), to: note, in: context)
         let checklist = try attach(ChecklistPayload(items: [.init(label: "Milk")]), to: note, in: context)
 
-        #expect(GeofenceCandidateBuilder.candidates(in: note).allSatisfy(\.isActionable))
+        #expect(GeofenceCandidateBuilder.candidates(in: note).allSatisfy { $0.isActionable })
 
         var payload = try checklist.decoded(as: ChecklistPayload.self)
         payload.items[0].checked = true
@@ -321,7 +321,7 @@ struct GeofenceCandidateBuilderTests {
         let note = makeNote(in: context)
         _ = try attach(PlacePayload(name: "Home", coordinate: .init(latitude: 51.5, longitude: -0.12)), to: note, in: context)
 
-        #expect(GeofenceCandidateBuilder.candidates(in: note).allSatisfy(\.isActionable))
+        #expect(GeofenceCandidateBuilder.candidates(in: note).allSatisfy { $0.isActionable })
     }
 
     @Test("A trashed or hidden note contributes nothing")

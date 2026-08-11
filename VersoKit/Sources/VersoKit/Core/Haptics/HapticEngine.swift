@@ -168,7 +168,10 @@ final class HapticEngine {
 
     // MARK: - Loading
 
-    static func url(for pattern: Pattern) -> URL? {
+    /// `nonisolated` because looking a file up in the bundle touches nothing
+    /// the engine owns, and the tests that assert every pattern has a file
+    /// have no reason to hop to the main actor to do it.
+    nonisolated static func url(for pattern: Pattern) -> URL? {
         BundleResourceLoader.url(forResource: pattern.rawValue, extension: "ahap", subdirectory: "Haptics")
     }
 

@@ -259,7 +259,10 @@ struct TextStructuringTests {
     }
 }
 
+/// `@MainActor` because `NoteDigest.init` is: it reads a `Note`, which is
+/// bound to the context that created it.
 @Suite("Note digest")
+@MainActor
 struct NoteDigestTests {
 
     @Test("A digest is the note's readable text")
