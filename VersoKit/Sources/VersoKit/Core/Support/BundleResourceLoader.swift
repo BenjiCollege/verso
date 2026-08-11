@@ -30,10 +30,16 @@ enum BundleResourceLoader {
     ) -> [T] {
         let decoder = JSONDecoder()
         var results: [T] = []
+        let candidates = candidateURLs(subdirectory: subdirectory, in: bundle)
+        // Only when the folder could not be found. Inside the folder, the folder
+        // is the answer, and a file that fails to decode should say so loudly
+        // rather than being quietly skipped as the wrong kind.
+        let mustMatchKind = !candidates.isScoped
 
-        for url in candidateURLs(subdirectory: subdirectory, in: bundle) {
+        for url in candidates.urls {
             do {
                 let data = try Data(contentsOf: url)
+                if mustMatchKind, ResourceKind(data)?.kind != kind { continue }
                 results.append(try decoder.decode(T.self, from: data))
             } catch {
                 logger.error(
@@ -50,17 +56,37 @@ enum BundleResourceLoader {
 
     /// Sorted by filename so the load order is stable, which is what makes a
     /// duplicate-id tiebreak deterministic across devices.
-    private static func candidateURLs(subdirectory: String, in bundle: Bundle) -> [URL] {
+    private static func candidateURLs(
+        subdirectory: String,
+        in bundle: Bundle
+    ) -> (urls: [URL], isScoped: Bool) {
         let scoped = bundle.urls(forResourcesWithExtension: "json", subdirectory: subdirectory) ?? []
         guard scoped.isEmpty else {
-            return scoped.sorted { $0.lastPathComponent < $1.lastPathComponent }
+            return (scoped.sorted { $0.lastPathComponent < $1.lastPathComponent }, true)
         }
 
-        // A flat fallback, kept for the one case it still covers: a resource
-        // added without a folder, or a bundle laid out differently than
-        // expected.
-        return (bundle.urls(forResourcesWithExtension: "json", subdirectory: nil) ?? [])
+        // A flat fallback, for a resource added without a folder or a bundle
+        // laid out differently than expected. What it finds is filtered on
+        // `kind`, because an unfiltered flat scan does not fail — it succeeds
+        // wrongly, and puts the paper stocks in the template gallery.
+        logger.error("""
+            Found no JSON under \(subdirectory, privacy: .public)/. Falling back to \
+            a flat scan filtered on kind; check the package's resource rules.
+            """)
+        let flat = (bundle.urls(forResourcesWithExtension: "json", subdirectory: nil) ?? [])
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        return (flat, false)
+    }
+
+    /// Just the discriminator, so a file can be identified without knowing
+    /// which type is meant to decode it.
+    private struct ResourceKind: Decodable {
+        var kind: String?
+
+        init?(_ data: Data) {
+            guard let decoded = try? JSONDecoder().decode(ResourceKind.self, from: data) else { return nil }
+            self = decoded
+        }
     }
 
     /// Where the haptic patterns live. Same bundle, different extension.

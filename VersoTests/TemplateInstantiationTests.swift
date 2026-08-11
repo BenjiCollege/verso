@@ -18,10 +18,19 @@ struct TemplateInstantiationTests {
 
     // MARK: - Catalog
 
-    @Test("Phase 1 ships blank and grocery-run, both instantiable")
+    /// Named rather than counted: `TemplateLibraryTests` owns the count, and
+    /// two tests asserting the same number means neither can be trusted to
+    /// still mean anything once the library grows.
+    @Test("The catalog holds blank and grocery-run, and only real templates")
     func catalogContents() {
-        #expect(Set(catalog.all.map(\.id)) == ["blank", "grocery-run"])
-        #expect(Set(catalog.supported.map(\.id)) == ["blank", "grocery-run"])
+        #expect(catalog.all.contains { $0.id == "blank" })
+        #expect(catalog.all.contains { $0.id == "grocery-run" })
+        #expect(Set(catalog.supported.map(\.id)) == Set(catalog.all.map(\.id)))
+
+        // Stocks and themes are JSON in the same bundle, and a resource-rule
+        // slip once loaded them here as templates that decoded to nothing.
+        #expect(!catalog.all.contains { $0.id == "dot-grid" || $0.id == "manuscript" })
+        #expect(catalog.all.allSatisfy { !$0.blocks.isEmpty || $0.id == "blank" })
     }
 
     // MARK: - Blank
@@ -51,8 +60,10 @@ struct TemplateInstantiationTests {
             locale: Locale(identifier: "en_US")
         )
 
-        #expect(note.orderedBlocks.map(\.type) == [.checklist, .divider, .text])
-        #expect(note.orderedBlocks.map(\.position) == [0, 1, 2])
+        #expect(note.orderedBlocks.map(\.type) == [
+            .place, .checklist, .divider, .formula, .formula, .formula,
+        ])
+        #expect(note.orderedBlocks.map(\.position) == [0, 1, 2, 3, 4, 5])
         #expect(note.stockID == "ruled")
         #expect(note.themeID == nil, "the template inherits the app theme")
         #expect(note.title.hasPrefix("Grocery Run"))
@@ -65,7 +76,10 @@ struct TemplateInstantiationTests {
         let template = try #require(catalog.template(id: "grocery-run"))
         let note = try TemplateInstantiator.makeNote(from: template, in: context)
 
-        let checklist = try note.orderedBlocks[0].decoded(as: ChecklistPayload.self)
+        // Found by type rather than by index: which position the list sits at
+        // is the template's business, and it has moved once already.
+        let block = try #require(note.orderedBlocks.first { $0.type == .checklist })
+        let checklist = try block.decoded(as: ChecklistPayload.self)
         #expect(checklist.groupBy == .group)
         #expect(checklist.itemFields == [.quantity, .unit, .price, .note])
         #expect(checklist.items.isEmpty)
@@ -88,8 +102,8 @@ struct TemplateInstantiationTests {
 
         let note = try #require(fetched.first)
         #expect(note.id == created.id)
-        #expect(note.orderedBlocks.count == 3)
-        #expect(note.orderedBlocks.map(\.typeRaw) == ["checklist", "divider", "text"])
+        #expect(note.orderedBlocks.count == template.blocks.count)
+        #expect(note.orderedBlocks.map(\.typeRaw) == template.blocks.map(\.type))
     }
 
     @Test("Checking an item survives a save and refetch")
@@ -98,7 +112,7 @@ struct TemplateInstantiationTests {
         let template = try #require(catalog.template(id: "grocery-run"))
         let note = try TemplateInstantiator.makeNote(from: template, in: context)
 
-        let block = note.orderedBlocks[0]
+        let block = try #require(note.orderedBlocks.first { $0.type == .checklist })
         var checklist = try block.decoded(as: ChecklistPayload.self)
         checklist.items.append(.init(label: "Lemons", group: "produce"))
         let id = checklist.items[0].id
@@ -107,7 +121,8 @@ struct TemplateInstantiationTests {
         try context.save()
 
         let refetched = try #require(try context.fetch(FetchDescriptor<Note>()).first)
-        let restored = try refetched.orderedBlocks[0].decoded(as: ChecklistPayload.self)
+        let restoredBlock = try #require(refetched.orderedBlocks.first { $0.type == .checklist })
+        let restored = try restoredBlock.decoded(as: ChecklistPayload.self)
         #expect(restored.items.count == 1)
         #expect(restored.items[0].checked)
         #expect(restored.items[0].checkedAt != nil)

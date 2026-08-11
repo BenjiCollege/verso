@@ -153,7 +153,9 @@ struct SyncMapRecorderTests {
             recorder.sample(blockID: block, characterOffset: step, at: Double(step) * 0.01)
         }
 
-        #expect(recorder.textMarks.count == 1, "one second of typing at 100Hz is one mark")
+        // A second of typing at 100Hz, kept at four a second: 100 samples in,
+        // marks at 0, 0.25, 0.5 and 0.75 out.
+        #expect(recorder.textMarks.count == 4)
     }
 
     /// Coalescing must not throw away where the typist reached, or every mark

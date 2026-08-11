@@ -46,10 +46,16 @@ struct LinkGraph: Sendable, Equatable {
         replaceOutgoing(for: note, with: [], unresolvedTitles: [])
         outgoing[note] = nil
         unresolved[note] = nil
-        for (target, var sources) in incoming where sources.contains(note) {
-            sources.remove(note)
-            incoming[target] = sources.isEmpty ? nil : sources
+
+        // And as a target, which `replaceOutgoing` cannot reach: it repairs the
+        // edges out of this note, not the ones into it. Left alone, every note
+        // that pointed here would keep an edge to something deleted, and
+        // `incoming[note]` would hold a dead id for the life of the process.
+        for source in incoming[note] ?? [] {
+            outgoing[source]?.remove(note)
+            if outgoing[source]?.isEmpty == true { outgoing[source] = nil }
         }
+        incoming[note] = nil
     }
 }
 

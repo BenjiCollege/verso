@@ -37,7 +37,10 @@ struct RevealPlan: Equatable, Sendable {
     static func plan(for style: RevealStyle) -> RevealPlan {
         switch style {
         case .typewriter:
-            RevealPlan(style: style, granularity: .glyph, stagger: glyphGap, unitDuration: 0.001)
+            // Zero, not merely small: a glyph from a typewriter is struck, not
+            // dissolved. The stagger is the whole effect. `progress` reads this
+            // and snaps, which is what `RevealAppearance` then assumes.
+            RevealPlan(style: style, granularity: .glyph, stagger: glyphGap, unitDuration: 0)
         case .fadeUp:
             RevealPlan(style: style, granularity: .word, stagger: Motion.wordGap, unitDuration: 0.32)
         case .blurIn:

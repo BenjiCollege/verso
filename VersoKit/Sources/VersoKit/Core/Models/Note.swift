@@ -60,12 +60,22 @@ extension Note {
         (blocks ?? []).sorted { $0.position < $1.position }
     }
 
-    /// Rewrites `position` to a dense 0..<n sequence. Call after any structural
-    /// edit so positions never drift or collide.
-    func normalizeBlockPositions() {
-        for (index, block) in orderedBlocks.enumerated() where block.position != index {
+    /// Rewrites `position` to a dense 0..<n sequence over a known order.
+    ///
+    /// Takes the order rather than reading `orderedBlocks`, which sorts by the
+    /// very positions being rewritten. After a move that would sort the new
+    /// arrangement straight back into the old one, and the edit would vanish.
+    private func assignPositions(_ ordered: [Block]) {
+        for (index, block) in ordered.enumerated() where block.position != index {
             block.position = index
         }
+    }
+
+    /// Closes any gaps or collisions in the existing order. For repairing drift
+    /// — two devices inserting at the same index, say — not for applying an
+    /// edit: it can only preserve the order `position` already describes.
+    func normalizeBlockPositions() {
+        assignPositions(orderedBlocks)
     }
 
     func append(_ block: Block) {
@@ -80,12 +90,13 @@ extension Note {
         block.note = self
         ordered.insert(block, at: clamped)
         blocks = ordered
-        normalizeBlockPositions()
+        assignPositions(ordered)
     }
 
     func remove(_ block: Block) {
-        blocks = orderedBlocks.filter { $0.id != block.id }
-        normalizeBlockPositions()
+        let ordered = orderedBlocks.filter { $0.id != block.id }
+        blocks = ordered
+        assignPositions(ordered)
     }
 
     /// Reorders in place. Written out rather than using SwiftUI's
@@ -100,7 +111,7 @@ extension Note {
         let insertionPoint = destination - source.filter { $0 < destination }.count
         ordered.insert(contentsOf: moved, at: max(0, min(insertionPoint, ordered.count)))
         blocks = ordered
-        normalizeBlockPositions()
+        assignPositions(ordered)
     }
 
     func touch(_ date: Date = Date()) {

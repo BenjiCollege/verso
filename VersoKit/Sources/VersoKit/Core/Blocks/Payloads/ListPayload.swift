@@ -23,6 +23,18 @@ struct ListPayload: BlockPayload {
             self.id = id
             self.text = text
         }
+
+        /// Both keys optional, like every other nested payload type.
+        ///
+        /// A template is JSON somebody writes by hand, and nobody hand-writes
+        /// a UUID per bullet. Section 2 promises a new template is one file and
+        /// no Swift; a synthesised decoder that demands `id` quietly breaks
+        /// that promise for every list block in the library.
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+            self.text = try container.decodeIfPresent(String.self, forKey: .text) ?? ""
+        }
     }
 
     var style: Style

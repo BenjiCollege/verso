@@ -27,16 +27,16 @@ let package = Package(
         .target(
             name: "VersoKit",
             resources: [
-                // `.process` rather than `.copy`, so these are addressable
-                // through `Bundle.module` with their directory structure intact.
-                // That replaces the flat-bundle fallback `BundleResourceLoader`
-                // needed when Xcode's synchronized groups were doing the
-                // packaging.
-                .process("Resources/Themes"),
-                .process("Resources/Stocks"),
-                .process("Resources/Templates"),
-                .process("Resources/Exercises"),
-                .process("Resources/Haptics"),
+                // `.copy`, not `.process`: process flattens a directory into the
+                // bundle root, which leaves every catalogue in one pile and a
+                // subdirectory lookup finding nothing. Copy preserves the
+                // folder, which is the whole basis on which
+                // `BundleResourceLoader` tells a stock from a template.
+                .copy("Resources/Themes"),
+                .copy("Resources/Stocks"),
+                .copy("Resources/Templates"),
+                .copy("Resources/Exercises"),
+                .copy("Resources/Haptics"),
             ],
             swiftSettings: [
                 .swiftLanguageMode(.v6),
