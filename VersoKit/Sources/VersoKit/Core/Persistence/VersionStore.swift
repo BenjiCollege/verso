@@ -44,8 +44,44 @@ struct VersionPolicy: Sendable, Equatable {
         if let lastRecordedAt, now.timeIntervalSince(lastRecordedAt) < minimumInterval {
             return false
         }
-        return abs(current.characterCount - previous.characterCount) >= minimumCharacterChange
+        return changedCharacters(previous, current) >= minimumCharacterChange
             || previous.title != current.title
+    }
+
+    /// How much actually changed between two states.
+    ///
+    /// Comparing the two totals instead — which is what this used to do — reads
+    /// a paragraph replaced by another of the same width as no edit at all, and
+    /// "revision 0" becoming "revision 1" as nothing whatsoever. A note could be
+    /// rewritten indefinitely and history would hold none of it.
+    ///
+    /// Blocks are matched by id and compared byte for byte: exact when text is
+    /// added or deleted, and a fair over-estimate when it is rewritten in place.
+    func changedCharacters(_ previous: NoteSnapshot, _ current: NoteSnapshot) -> Int {
+        var total = previous.title == current.title ? 0 : max(previous.title.count, current.title.count)
+
+        let before = Dictionary(
+            previous.blocks.map { ($0.id, $0.payload) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        var seen: Set<UUID> = []
+
+        for block in current.blocks {
+            seen.insert(block.id)
+            guard let old = before[block.id] else {
+                // A block that did not exist before is all new.
+                total += block.payload.count
+                continue
+            }
+            guard old != block.payload else { continue }
+            total += zip(old, block.payload).reduce(0) { $1.0 == $1.1 ? $0 : $0 + 1 }
+                + abs(old.count - block.payload.count)
+        }
+
+        for block in previous.blocks where !seen.contains(block.id) {
+            total += block.payload.count
+        }
+        return total
     }
 }
 

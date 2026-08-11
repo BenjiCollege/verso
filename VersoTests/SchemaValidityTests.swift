@@ -182,8 +182,10 @@ struct SchemaValidityTests {
         let context = try makeContext()
         let day = Date(timeIntervalSince1970: 1_760_000_000)
 
+        // Two minutes apart, because two sets are: identical timestamps would
+        // leave the sort below with a tie to break however it liked.
         context.insert(MetricEntry(seriesID: "bench-press", groupID: "set-1", label: "Bench press", value: 80, unit: "kg", recordedAt: day))
-        context.insert(MetricEntry(seriesID: "bench-press", groupID: "set-2", label: "Bench press", value: 82.5, unit: "kg", recordedAt: day))
+        context.insert(MetricEntry(seriesID: "bench-press", groupID: "set-2", label: "Bench press", value: 82.5, unit: "kg", recordedAt: day.addingTimeInterval(120)))
         context.insert(MetricEntry(seriesID: "water", label: "Water", value: 500, unit: "ml", recordedAt: day))
         try context.save()
 

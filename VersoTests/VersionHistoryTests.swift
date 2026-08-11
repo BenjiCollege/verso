@@ -283,8 +283,15 @@ struct VersionStoreTests {
 
         #expect(try note.orderedBlocks[0].decoded(as: TextPayload.self).plain == "original")
         #expect(note.title == "Note")
-        // Using history must never destroy it.
-        #expect(versions.versions(of: note).count > countBefore)
+
+        // Using history must never destroy it: where the note was a moment ago
+        // is still at the head, to scrub forward to. Not a count, because the
+        // present was already recorded here — `force` overrides the policy's
+        // thresholds, not the refusal to store a byte-identical duplicate.
+        #expect(versions.versions(of: note).count >= countBefore)
+        let head = try #require(versions.snapshot(at: 0, of: note))
+        #expect(head.title == "Renamed")
+        #expect(try BlockCoding.decode(TextPayload.self, from: head.blocks[0].payload).plain == "replaced")
     }
 
     @Test("Restoring reinstates a deleted block and removes an added one")
