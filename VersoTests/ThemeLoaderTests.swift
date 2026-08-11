@@ -128,7 +128,10 @@ struct ThemeLoaderTests {
 
     @Test("A bad hex value in a theme file fails decoding")
     func badHexFailsDecoding() {
-        let data = Data(#"{"id":"x","name":"X","appearance":"light","grain":0,"palette":{"stock":"nope","ink":"#000","inkSecondary":"#111","accent":"#222","rule":"#333","edge":"#444","gilt":"#555"}}"#.utf8)
+        // Written without leading hashes: `:"#` would close a `#"…"#` literal
+        // early, and `HexColor` accepts a bare six-digit value anyway. The
+        // point of the test is that "nope" is refused.
+        let data = Data(#"{"id":"x","name":"X","appearance":"light","grain":0,"palette":{"stock":"nope","ink":"000000","inkSecondary":"111111","accent":"222222","rule":"333333","edge":"444444","gilt":"555555"}}"#.utf8)
         #expect(throws: (any Error).self) {
             _ = try JSONDecoder().decode(Theme.self, from: data)
         }
