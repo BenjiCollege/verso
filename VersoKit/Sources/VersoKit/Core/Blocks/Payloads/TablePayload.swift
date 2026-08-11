@@ -127,7 +127,9 @@ struct TablePayload: BlockPayload {
     /// count is kept so the shape of the table survives.
     func resetForTemplate() -> TablePayload {
         var copy = self
-        copy.rows = rows.map { TablePayload.Row(cells: Array(repeating: Cell(), count: columns.count)) }
+        copy.rows = rows.map { _ in
+            TablePayload.Row(cells: Array(repeating: Cell(), count: columns.count))
+        }
         return copy
     }
 
