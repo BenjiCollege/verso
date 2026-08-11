@@ -15,6 +15,7 @@ struct TextBlockView: View {
     @Environment(\.textEditingSession) private var session
     @Environment(\.editorFocusMode) private var isFocusModeActive
     @Environment(\.caretSuppressed) private var isCaretSuppressed
+    @Environment(RecordingSession.self) private var recording
 
     @ScaledMetric(relativeTo: .body) private var bodySize: CGFloat = Typography.Role.body.pointSize
 
@@ -33,6 +34,9 @@ struct TextBlockView: View {
                 isCaretSuppressed: isCaretSuppressed,
                 caretRectInPage: { caret in
                     caret.offsetBy(dx: frameInPage.minX, dy: frameInPage.minY)
+                },
+                onCaretMoved: { offset in
+                    recording.sampleCaret(blockID: block.id, characterOffset: offset)
                 }
             )
             .onGeometryChange(for: CGRect.self) { proxy in

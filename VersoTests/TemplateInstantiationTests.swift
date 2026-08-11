@@ -133,11 +133,11 @@ struct TemplateInstantiationTests {
         let template = try decodeTemplate("""
         {"kind":"template","id":"future","name":"Future","blocks":[
           {"type":"heading","payload":{"level":1,"text":"Session"}},
-          {"type":"sketch","payload":{"drawing":""}}
+          {"type":"attachment","payload":{}}
         ]}
         """)
 
-        #expect(template.unsupportedBlockTypes() == ["sketch"])
+        #expect(template.unsupportedBlockTypes() == ["attachment"])
         #expect(!template.isSupported)
         #expect(throws: TemplateError.self) {
             _ = try TemplateInstantiator.makeBlocks(from: template)

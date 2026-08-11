@@ -22,6 +22,7 @@ struct NoteEditorView: View {
     @Environment(HapticEngine.self) private var haptics
     @Environment(VaultService.self) private var vault
     @Environment(IntelligenceService.self) private var intelligence
+    @Environment(RecordingSession.self) private var recording
 
     @State private var session = TextEditingSession()
     @State private var scrollPosition = ScrollPosition()
@@ -278,6 +279,10 @@ struct NoteEditorView: View {
                 )
             }
 
+            if recording.isRecording(into: note) {
+                recordingBar
+            }
+
             if session.isEditing {
                 FormattingToolbar(session: session, linkedNote: linkedNote)
             }
@@ -285,6 +290,37 @@ struct NoteEditorView: View {
         .animation(motion.animation(.settle), value: session.isEditing)
         .animation(motion.animation(.settle), value: session.linkDraft)
         .animation(motion.animation(.settle), value: scrubIndex)
+    }
+
+    /// Shown while recording, so it is never ambiguous whether the microphone
+    /// is on.
+    private var recordingBar: some View {
+        HStack(spacing: Layout.Space.cosy) {
+            Circle()
+                .fill(theme.accent)
+                .frame(width: Layout.Space.cosy, height: Layout.Space.cosy)
+
+            Text("Recording · \(recording.elapsed.timerClockText)")
+                .versoText(.metadata)
+                .foregroundStyle(theme.ink)
+                .monospacedDigit()
+
+            Spacer(minLength: 0)
+
+            Button("Cancel") { recording.cancel() }
+                .versoText(.metadata)
+
+            Button("Stop") {
+                recording.stop(for: note, in: context, localOnly: appearance.keepAudioOnDevice)
+                haptics.play(.checklistCheck)
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(.horizontal, Layout.Space.regular)
+        .padding(.vertical, Layout.Space.snug)
+        .background(.bar)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text("Recording in progress"))
     }
 
     // MARK: - Toolbar
@@ -328,6 +364,14 @@ struct NoteEditorView: View {
                         isAssisting = true
                     } label: {
                         Label("Suggestions", systemImage: "sparkles")
+                    }
+                }
+
+                if !recording.isRecording {
+                    Button {
+                        Task { await recording.start(for: note) }
+                    } label: {
+                        Label("Record", systemImage: "mic")
                     }
                 }
 

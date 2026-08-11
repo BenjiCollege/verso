@@ -13,7 +13,10 @@ struct SettingsView: View {
     @Environment(VaultService.self) private var vault
     @Environment(IntelligenceService.self) private var intelligence
 
+    @Environment(\.modelContext) private var context
+
     @State private var isShowingVault = false
+    @State private var usage = AudioStore.Usage(syncedBytes: 0, localOnlyBytes: 0, recordingCount: 0)
 
     private var vaultSummary: String {
         switch vault.state {
@@ -63,6 +66,23 @@ struct SettingsView: View {
                     Text("Keeps the line you're writing at a fixed place on screen instead of letting it drift to the bottom.")
                         .versoText(.chromeCaption)
                         .foregroundStyle(theme.inkSecondary)
+                }
+
+                Section {
+                    Toggle(isOn: $appearance.keepAudioOnDevice) {
+                        Text("Keep new recordings on this device")
+                    }
+
+                    LabeledContent("In iCloud") {
+                        Text(usage.syncedDescription).foregroundStyle(theme.inkSecondary)
+                    }
+                    LabeledContent("On this device only") {
+                        Text(usage.localOnlyDescription).foregroundStyle(theme.inkSecondary)
+                    }
+                } header: {
+                    Text("Recordings")
+                } footer: {
+                    Text("\(usage.recordingCount) recordings. Device-only ones never enter iCloud at all, so they can't be recovered if you lose this device.")
                 }
 
                 Section("Vault") {
@@ -121,6 +141,9 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $isShowingVault) {
                 VaultGateView()
+            }
+            .task {
+                usage = AudioStore.usage(in: context)
             }
         }
     }

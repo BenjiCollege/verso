@@ -8,13 +8,26 @@ state of the build.
 
 ---
 
-## Status: Phases 1–9 complete, not yet compiled
+## Status: Phases 1–10 complete, not yet compiled
 
 Phases 1 (Foundation), 2 (Editor), 3 (Data blocks), 4 (Time and place),
-5 (Templates), 6 (Fore-edge and history), 7 (Reveal and share), 8 (Vault) and
-9 (Intelligence) are written in full. None of it has **ever been compiled, run,
-or checked against the iOS 26 SDK**, because it was authored on Windows 11 with
-no Xcode, no Swift toolchain, and no simulator available.
+5 (Templates), 6 (Fore-edge and history), 7 (Reveal and share), 8 (Vault),
+9 (Intelligence) and 10 (Ink and audio) are written in full. None of it has
+**ever been compiled, run, or checked against the iOS 26 SDK**, because it was
+authored on Windows 11 with no Xcode, no Swift toolchain, and no simulator
+available.
+
+### One change to the §4 data model
+
+`AudioAsset` gained `@Attribute(.externalStorage) var recording: Data`. §7 asks
+for a per-note "keep audio on this device only" toggle and for iCloud storage to
+be shown in Settings — both presuppose that audio otherwise syncs, and the only
+sanctioned sync is CloudKit through this store. Without somewhere to put the
+bytes, `localOnly` has nothing to mean.
+
+This is the only model change in the project. Reverting it is one property and
+one line in `AudioStore.save`; audio would then live only in the app container
+and never reach another device.
 
 **Phase 8 is security code that has never run.** Treat every claim it makes as
 unverified until it has been exercised on a device: the encryption round-trips
@@ -149,6 +162,17 @@ simulator. The fallback half is plain Swift and is tested:
 | `NLEmbedding.sentenceEmbedding(for:)` | Returns nil for many languages; the lexical path has to carry those. |
 | `AVAudioApplication.requestRecordPermission()` | Replaced `AVAudioSession.requestRecordPermission` in iOS 17. |
 
+Phase 10 depends on PencilKit details that cannot be exercised without a Pencil:
+
+| Area | What to verify |
+|---|---|
+| `PKStroke.path.creationDate` and `PKStrokePoint.timeOffset` | The entire ink half of the sync map is derived from these. If the creation date is not what it appears to be, replay will be wrong rather than absent. |
+| `UIPencilInteraction` squeeze and tap callbacks | `didReceiveSqueeze:` and `didReceiveTap:` are the Pencil Pro API; the older `pencilInteractionDidTap:` may still be what fires. `UIPencilInteraction.preferredSqueezeAction` is deliberately honoured rather than overridden. |
+| `PKDrawing(strokes:)` | Used to rebuild a partial drawing for replay. |
+| `UIHoverGestureRecognizer` on a `PKCanvasView` | Hover preview; confirm it does not swallow Pencil input. |
+| Recording while a `TimelineView` reveal or a rest timer is running | Both take an `AVAudioSession`; check the category changes do not fight. |
+| `.externalStorage` on a multi-megabyte `Data` | Confirm CloudKit ships `AudioAsset.recording` as an asset and that a long recording does not stall a save. |
+
 ### Known limitations
 
 Deliberate, not oversights:
@@ -270,7 +294,18 @@ All flagged rather than silently taken:
 22. **Dictation refuses rather than going online.** If a device cannot
     transcribe on-device, the feature reports itself unavailable instead of
     letting `SFSpeechRecognizer` send audio to a server.
-23. **No `UIBackgroundModes: audio`.** §7 specifies `AVAudioSession` + a local
+23. **Device-only recordings never enter the store at all.** §4's `localOnly`
+    could have been a flag asking the sync engine not to carry the bytes.
+    Instead the bytes are simply absent from `AudioAsset.recording` and live
+    only in the app container, which is a promise rather than a request.
+24. **Replay reveals whole strokes, not growing ones.** A stroke becomes
+    visible when it *finished*. Interpolating within a stroke would need
+    per-point redrawing and would read as a glitch rather than as writing.
+25. **Apple Pencil Pro actions honour the system preference.** §7 names squeeze
+    and double-tap; `UIPencilInteraction.preferredSqueezeAction` is what the
+    user already told iOS those should do, so Verso does that rather than
+    inventing its own mapping.
+26. **No `UIBackgroundModes: audio`.** §7 specifies `AVAudioSession` + a local
    notification for rest timers. The session here only makes the completion
    sound audible over music and with the ringer switch off. Background delivery
    is the notification's job — claiming the audio background mode for a notes
@@ -337,5 +372,8 @@ Adding a theme or a paper stock is likewise one JSON file in
 | `TextStructuringTests` | Markdown, bullets, numbered lists, quantities and units, years not being quantities, and a capture instantiating through the normal template path |
 | `NoteDigestTests` | A locked note digesting to nothing |
 | `SemanticIndexTests` | Literal matching, title outranking body, every query word having to appear, locked notes never surfacing |
+| `SyncMapTests` | Tapping a word resolving to when it was written, strokes appearing only once finished, both streams independent per block |
+| `SyncMapRecorderTests` | Coalescing keeping the furthest offset reached, per-block independence, strokes replaced rather than appended |
+| `InkAudioPayloadTests` | Round-trips, height clamping, templates keeping shape and dropping content, AAC mono 32kbps |
 
 Still owed by §9: vault encrypt/decrypt, which arrives with Phase 8.

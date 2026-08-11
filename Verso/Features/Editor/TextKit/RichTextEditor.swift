@@ -22,6 +22,8 @@ struct RichTextEditor: UIViewRepresentable {
     let isCaretSuppressed: Bool
     /// Converts a caret rect from the text view's space into the page's.
     let caretRectInPage: (CGRect) -> CGRect
+    /// Reports the caret's character offset, for the audio sync map.
+    var onCaretMoved: ((Int) -> Void)?
 
     func makeCoordinator() -> RichTextCoordinator {
         RichTextCoordinator(parent: self)
@@ -253,6 +255,11 @@ final class RichTextCoordinator: NSObject, UITextViewDelegate, RichTextCommandTa
         if let versoTextView = textView as? VersoTextView, let caret = versoTextView.currentCaretRect {
             parent.session.update(caretRectInPage: parent.caretRectInPage(caret))
         }
+
+        // Feeds the sync map while a recording is running. Sampled here rather
+        // than on every keystroke because the caret moving is what a listener
+        // is following — and the recorder coalesces these anyway.
+        parent.onCaretMoved?(selection.location)
     }
 
     // MARK: - RichTextCommandTarget

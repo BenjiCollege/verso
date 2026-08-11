@@ -31,6 +31,7 @@ final class AppearanceStore {
         static let pinnedTheme = "appearance.theme.pinned"
         static let stock = "appearance.stock"
         static let typewriter = "editor.typewriter"
+        static let keepAudioOnDevice = "audio.localOnly"
     }
 
     private let defaults: UserDefaults
@@ -46,9 +47,14 @@ final class AppearanceStore {
     /// it is a setting and it defaults to off.
     var isTypewriterEnabled: Bool { didSet { defaults.set(isTypewriterEnabled, forKey: Key.typewriter) } }
 
+    /// The default for new recordings. Each one can still be changed
+    /// afterwards; this is only what a fresh one starts as.
+    var keepAudioOnDevice: Bool { didSet { defaults.set(keepAudioOnDevice, forKey: Key.keepAudioOnDevice) } }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         self.isTypewriterEnabled = defaults.bool(forKey: Key.typewriter)
+        self.keepAudioOnDevice = defaults.bool(forKey: Key.keepAudioOnDevice)
         self.mode = Mode(rawValue: defaults.string(forKey: Key.mode) ?? "") ?? .followSystem
         self.lightThemeID = defaults.string(forKey: Key.lightTheme) ?? ThemeCatalog.defaultLightThemeID
         self.darkThemeID = defaults.string(forKey: Key.darkTheme) ?? ThemeCatalog.defaultDarkThemeID

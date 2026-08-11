@@ -37,6 +37,10 @@ struct BlockRenderer: View {
             ScheduleBlockView(block: block)
         case .place:
             PlaceBlockView(block: block)
+        case .sketch:
+            SketchBlockView(block: block)
+        case .audio:
+            AudioBlockView(block: block)
         case .some(let type):
             UnsupportedBlockView(typeName: String(localized: type.displayName), systemImage: type.systemImage)
         case nil:
