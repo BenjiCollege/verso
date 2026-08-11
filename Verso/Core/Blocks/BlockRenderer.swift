@@ -41,6 +41,8 @@ struct BlockRenderer: View {
             SketchBlockView(block: block)
         case .audio:
             AudioBlockView(block: block)
+        case .attachment:
+            AttachmentBlockView(block: block)
         case .some(let type):
             UnsupportedBlockView(typeName: String(localized: type.displayName), systemImage: type.systemImage)
         case nil:

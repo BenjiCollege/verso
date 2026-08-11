@@ -8,14 +8,17 @@ state of the build.
 
 ---
 
-## Status: Phases 1–10 complete, not yet compiled
+## Status: Phases 1–11 complete, not yet compiled
 
 Phases 1 (Foundation), 2 (Editor), 3 (Data blocks), 4 (Time and place),
 5 (Templates), 6 (Fore-edge and history), 7 (Reveal and share), 8 (Vault),
-9 (Intelligence) and 10 (Ink and audio) are written in full. None of it has
-**ever been compiled, run, or checked against the iOS 26 SDK**, because it was
-authored on Windows 11 with no Xcode, no Swift toolchain, and no simulator
-available.
+9 (Intelligence), 10 (Ink and audio) and 11 (Documents) are written in full.
+None of it has **ever been compiled, run, or checked against the iOS 26 SDK**,
+because it was authored on Windows 11 with no Xcode, no Swift toolchain, and no
+simulator available.
+
+Only Phase 12 remains: App Intents, widgets, Control Center, Spotlight,
+Handoff, drag and drop, iPad multi-window — and the §10 submission checklist.
 
 ### One change to the §4 data model
 
@@ -173,6 +176,16 @@ Phase 10 depends on PencilKit details that cannot be exercised without a Pencil:
 | Recording while a `TimelineView` reveal or a rest timer is running | Both take an `AVAudioSession`; check the category changes do not fight. |
 | `.externalStorage` on a multi-megabyte `Data` | Confirm CloudKit ships `AudioAsset.recording` as an asset and that a long recording does not stall a save. |
 
+Phase 11 rests on PDFKit geometry, where a sign error is silent and total:
+
+| Area | What to verify |
+|---|---|
+| PDF page space is bottom-left origin | Every annotation flips once, in `DocumentViewer.displayRect` and `DocumentExporter.flip`. If highlights land mirrored vertically, that is where to look. |
+| `PDFPage.selection(from:to:)` and `selectionsByLine()` | How highlights follow text rather than a rectangle. Check against a two-column PDF and one with rotated pages. |
+| `CGContext.beginPDFPage` with a per-page media box | Flattened export preserves each page's own size; check a document mixing portrait and landscape. |
+| `PDFAnnotation(bounds:forType:.ink)` with `add(_ path:)` | Layered export. Confirm the annotations are selectable in Preview and Adobe Acrobat, not just visible. |
+| `PKDrawing.transformed(using:)` | Ink is stored in page space and scaled for display; a wrong scale is invisible until the window resizes. |
+
 ### Known limitations
 
 Deliberate, not oversights:
@@ -305,7 +318,21 @@ All flagged rather than silently taken:
     and double-tap; `UIPencilInteraction.preferredSqueezeAction` is what the
     user already told iOS those should do, so Verso does that rather than
     inventing its own mapping.
-26. **No `UIBackgroundModes: audio`.** §7 specifies `AVAudioSession` + a local
+26. **Documents do not sync, and say so.** §5 describes the `attachment`
+    payload as a *file ref* and a page count, so that is taken literally: the
+    PDF lives in the app container and the payload points at it. A small
+    first-page thumbnail rides in the payload so the block still shows what it
+    is on another device, where it reads "Not on this device". Making documents
+    sync would be the same `.externalStorage` change made for audio in Phase
+    10 — say the word and it is a few lines. It was not taken unasked, because
+    unlike `AudioAsset.localOnly`, nothing in §4 or §5 implies documents were
+    meant to travel.
+27. **The document viewer renders pages itself rather than using `PDFView`.**
+    Overlaying an annotation canvas means reaching into `PDFView`'s own scroll
+    hierarchy, which is fragile and would not let the Phase 10 ink canvas be
+    reused. The cost is that page zoom is scroll-based rather than PDFView's
+    pinch-to-zoom.
+28. **No `UIBackgroundModes: audio`.** §7 specifies `AVAudioSession` + a local
    notification for rest timers. The session here only makes the completion
    sound audible over music and with the ringer switch off. Background delivery
    is the notification's job — claiming the audio background mode for a notes
@@ -375,5 +402,7 @@ Adding a theme or a paper stock is likewise one JSON file in
 | `SyncMapTests` | Tapping a word resolving to when it was written, strokes appearing only once finished, both streams independent per block |
 | `SyncMapRecorderTests` | Coalescing keeping the furthest offset reached, per-block independence, strokes replaced rather than appended |
 | `InkAudioPayloadTests` | Round-trips, height clamping, templates keeping shape and dropping content, AAC mono 32kbps |
+| `DocumentAnnotationTests` | Normalised rects surviving a resize, ink per page, clearing leaving nothing behind, highlighted text in reading order |
+| `AttachmentPayloadTests` | Round-trip, clamping, highlights being what search and export see, templates dropping the document |
 
 Still owed by §9: vault encrypt/decrypt, which arrives with Phase 8.

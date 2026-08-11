@@ -134,15 +134,17 @@ struct BlockPayloadRoundTripTests {
         #expect(BlockRegistry.shared.implementedTypes == [
             .text, .heading, .checklist, .list,
             .metric, .timer, .table, .place, .schedule, .formula, .progress, .rating,
-            .divider, .sketch, .audio,
+            .divider, .sketch, .audio, .attachment,
         ])
     }
 
+    /// Two types remain: `callout`, `code`, `image` and `link` have no phase of
+    /// their own, so the registry still has to refuse cleanly.
     @Test("Registry refuses a type it has no payload for")
     func registryRejectsUnimplementedType() {
-        #expect(!BlockRegistry.shared.isImplemented(.attachment))
-        #expect(throws: BlockRegistryError.unimplementedType(.attachment)) {
-            _ = try BlockRegistry.shared.makeDefaultData(for: .attachment)
+        #expect(!BlockRegistry.shared.isImplemented(.callout))
+        #expect(throws: BlockRegistryError.unimplementedType(.callout)) {
+            _ = try BlockRegistry.shared.makeDefaultData(for: .callout)
         }
     }
 
