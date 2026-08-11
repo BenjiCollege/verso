@@ -133,7 +133,7 @@ struct BlockPayloadRoundTripTests {
     func registryImplementsShippedTypes() {
         #expect(BlockRegistry.shared.implementedTypes == [
             .text, .heading, .checklist, .list,
-            .metric, .timer, .table, .formula, .progress, .rating,
+            .metric, .timer, .table, .place, .schedule, .formula, .progress, .rating,
             .divider,
         ])
     }

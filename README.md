@@ -8,12 +8,12 @@ state of the build.
 
 ---
 
-## Status: Phases 1–3 complete, not yet compiled
+## Status: Phases 1–4 complete, not yet compiled
 
-Phase 1 (Foundation), Phase 2 (Editor) and Phase 3 (Data blocks) are written in
-full. None of it has **ever been compiled, run, or checked against the iOS 26
-SDK**, because it was authored on Windows 11 with no Xcode, no Swift toolchain,
-and no simulator available.
+Phases 1 (Foundation), 2 (Editor), 3 (Data blocks) and 4 (Time and place) are
+written in full. None of it has **ever been compiled, run, or checked against
+the iOS 26 SDK**, because it was authored on Windows 11 with no Xcode, no Swift
+toolchain, and no simulator available.
 
 Everything below is therefore written from knowledge of the frameworks rather
 than verified against the installed SDK, which is the opposite of the rule in
@@ -78,6 +78,17 @@ verify:
 | `Grid` / `GridRow` in a horizontal `ScrollView` | The table block's layout. |
 | `accessibilityAdjustableAction` | The rating block is one adjustable control rather than N buttons. |
 
+Phase 4 leans on Core Location's newest API, which is where its risk sits:
+
+| Area | What to verify |
+|---|---|
+| `CLMonitor` | `await CLMonitor(name)`, `add(_:identifier:)`, `remove(_:)`, `identifiers`, and the `events` stream. This is the iOS 17+ replacement for the deprecated `startMonitoring(for:)`; picking the modern API over the familiar one was deliberate, but none of it is verified. Confirm the ~20-condition ceiling still holds — `GeofenceBudget.systemLimit` encodes it. |
+| `CLMonitor.Event.state` | The `.satisfied` / `.unsatisfied` cases that arrival and departure map onto. |
+| `MKLocalPointsOfInterestRequest` | Category resolution, its 50km radius ceiling, and the `MKPointOfInterestCategory` cases in `PlaceResolver.offeredCategories`. |
+| `MapReader` + `proxy.convert(_:from:)` | Tap-to-drop-a-pin in the place picker. |
+| `@Observable` on an `NSObject` subclass | `LocationAuthority` is both, so it can be a `CLLocationManagerDelegate`. |
+| Always-authorisation flow | When In Use must be granted before Always can be requested. |
+
 ### Known limitations
 
 Deliberate, not oversights:
@@ -123,7 +134,16 @@ All flagged rather than silently taken:
 7. **`Core/Timers/` is a new directory.** §3's tree has no home for a service
    that owns both `AVAudioSession` and `UNUserNotificationCenter`; filing it
    under `Audio/` would misdescribe it.
-8. **No `UIBackgroundModes: audio`.** §7 specifies `AVAudioSession` + a local
+8. **`schedule` gained a `label`, `place` gained a `name`.** §5 lists the other
+   fields; a reminder with nothing to call it is unusable in a list and unusable
+   in a notification.
+9. **`Core/Schedule/` is a new directory**, alongside the `Core/Timers/` added
+   in Phase 3.
+10. **`Recurrence` is structured, not an RRULE string.** The app has to *compute*
+    occurrences — `UNCalendarNotificationTrigger` can only repeat the simple
+    shapes, and everything else is scheduled a few ahead and topped up. Parsing
+    RRULE to do that would be a lot of surface for no gain.
+11. **No `UIBackgroundModes: audio`.** §7 specifies `AVAudioSession` + a local
    notification for rest timers. The session here only makes the completion
    sound audible over music and with the ringer switch off. Background delivery
    is the notification's job — claiming the audio background mode for a notes
@@ -167,6 +187,9 @@ Adding a theme or a paper stock is likewise one JSON file in
 | `MetricSeriesTests` | Daily bucketing, moving averages, scoped series queries, idempotent recording, personal records excluding themselves, label slugging |
 | `DataBlockPayloadTests` | Round-trip for all six new payloads, clamping, ragged-table repair, unknown enums degrading |
 | `RestTimerTests` | Remaining time from the wall clock, finishing, pausing, encoding for relaunch |
+| `GeofenceBudgetTests` | The twenty-region ceiling, proximity-then-recency ranking, deterministic ordering, dormant reminders never taking a slot, and every inactive state having something to say |
+| `GeofenceCandidateBuilderTests` | Which places are actionable, trashed notes contributing nothing, null-island rejection, radius clamping |
+| `RecurrenceTests` | Every frequency and interval, multi-weekday weeks, month-end clamping, end dates and occurrence counts, and which series map onto a repeating system trigger |
+| `ScheduleNotificationPlannerTests` | Alarm offsets, past alarms dropped, repeating vs concrete scheduling, identifier scoping, and the pending-notification budget |
 
-Still owed by §9: the geofence budget manager and vault encrypt/decrypt, which
-arrive with Phases 4 and 8.
+Still owed by §9: vault encrypt/decrypt, which arrives with Phase 8.

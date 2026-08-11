@@ -33,6 +33,10 @@ struct BlockRenderer: View {
             RatingBlockView(block: block)
         case .table:
             TableBlockView(block: block)
+        case .schedule:
+            ScheduleBlockView(block: block)
+        case .place:
+            PlaceBlockView(block: block)
         case .some(let type):
             UnsupportedBlockView(typeName: String(localized: type.displayName), systemImage: type.systemImage)
         case nil:

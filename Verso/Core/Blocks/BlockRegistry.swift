@@ -66,6 +66,9 @@ struct BlockRegistry: Sendable {
         entry(FormulaPayload.self),
         entry(ProgressPayload.self),
         entry(RatingPayload.self),
+        // Phase 4
+        entry(SchedulePayload.self),
+        entry(PlacePayload.self),
     ])
 
     // MARK: - Lookup

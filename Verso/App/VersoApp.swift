@@ -15,11 +15,19 @@ struct VersoApp: App {
     /// Running timers are app state, not note state: a rest timer counting down
     /// on your phone must not start counting on your iPad.
     @State private var timers = RestTimerService()
+    @State private var schedule: ScheduleService
+    @State private var geofences: GeofenceService
 
     init() {
         let persistence = VersoModelContainer.makeShared()
+        let authority = LocationAuthority()
+
         self.persistence = persistence
         _linkIndex = State(initialValue: LinkIndex(container: persistence.container))
+        _schedule = State(initialValue: ScheduleService(container: persistence.container))
+        _geofences = State(
+            initialValue: GeofenceService(container: persistence.container, authority: authority)
+        )
     }
 
     var body: some Scene {
@@ -28,7 +36,17 @@ struct VersoApp: App {
                 .environment(appearance)
                 .environment(linkIndex)
                 .environment(timers)
+                .environment(schedule)
+                .environment(geofences)
+                .environment(geofences.authority)
                 .environment(\.persistenceMode, persistence.mode)
+                .task {
+                    // Reminders are rebuilt from the library at launch rather
+                    // than trusted to have stayed in step: a note edited on
+                    // another device has to take effect here too.
+                    await schedule.refresh()
+                    await geofences.refresh()
+                }
         }
         .modelContainer(persistence.container)
     }

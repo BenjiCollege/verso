@@ -24,6 +24,10 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Verso uses your location to find the nearest matches for place reminders like “any grocery store”, so a list can remind you when you get there.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Verso watches the places you attach to your lists so it can remind you when you arrive, even when Verso isn't open. Your location is used only on this device and is never sent anywhere.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
