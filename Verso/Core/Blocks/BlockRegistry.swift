@@ -48,14 +48,24 @@ struct BlockRegistry: Sendable {
         )
     }
 
-    /// Phase 1 implements five block types. The rest are declared in
-    /// `BlockType` but deliberately absent here until their phase lands.
+    /// The block types this build can create. The rest are declared in
+    /// `BlockType` but deliberately absent here until their phase lands, which
+    /// is what keeps a template that names one out of the gallery instead of
+    /// producing a note that cannot be built.
     static let shared = BlockRegistry(entries: [
+        // Phase 1
         entry(TextPayload.self),
         entry(HeadingPayload.self),
         entry(ChecklistPayload.self),
         entry(ListPayload.self),
         entry(DividerPayload.self),
+        // Phase 3
+        entry(MetricPayload.self),
+        entry(TimerPayload.self),
+        entry(TablePayload.self),
+        entry(FormulaPayload.self),
+        entry(ProgressPayload.self),
+        entry(RatingPayload.self),
     ])
 
     // MARK: - Lookup

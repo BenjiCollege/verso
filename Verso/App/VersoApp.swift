@@ -12,6 +12,10 @@ struct VersoApp: App {
     @State private var appearance = AppearanceStore()
     @State private var linkIndex: LinkIndex
 
+    /// Running timers are app state, not note state: a rest timer counting down
+    /// on your phone must not start counting on your iPad.
+    @State private var timers = RestTimerService()
+
     init() {
         let persistence = VersoModelContainer.makeShared()
         self.persistence = persistence
@@ -23,6 +27,7 @@ struct VersoApp: App {
             RootView()
                 .environment(appearance)
                 .environment(linkIndex)
+                .environment(timers)
                 .environment(\.persistenceMode, persistence.mode)
         }
         .modelContainer(persistence.container)

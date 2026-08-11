@@ -8,12 +8,12 @@ state of the build.
 
 ---
 
-## Status: Phases 1–2 complete, not yet compiled
+## Status: Phases 1–3 complete, not yet compiled
 
-Phase 1 (Foundation) and Phase 2 (Editor) are written in full. Neither has
-**ever been compiled, run, or checked against the iOS 26 SDK**, because they
-were authored on Windows 11 with no Xcode, no Swift toolchain, and no simulator
-available.
+Phase 1 (Foundation), Phase 2 (Editor) and Phase 3 (Data blocks) are written in
+full. None of it has **ever been compiled, run, or checked against the iOS 26
+SDK**, because it was authored on Windows 11 with no Xcode, no Swift toolchain,
+and no simulator available.
 
 Everything below is therefore written from knowledge of the frameworks rather
 than verified against the installed SDK, which is the opposite of the rule in
@@ -67,6 +67,17 @@ how much would break if it is wrong:
 | `nonisolated init()` on `@MainActor @Observable` | `TextEditingSession`, so the environment key can build a default. |
 | `@ModelActor` on `LinkIndexBuilder` | Generated `init(modelContainer:)` and background-context fetching. |
 
+Phase 3 is mostly plain Swift and correspondingly lower-risk. What is left to
+verify:
+
+| Area | What to verify |
+|---|---|
+| Swift Charts marks | `BarMark` / `LineMark` / `PointMark` / `RuleMark` modifier names, and `AXChartDescriptorRepresentable` + `accessibilityChartDescriptor`. |
+| `AVAudioSession` category options | `.playback` with `[.mixWithOthers, .duckOthers]`, and that no `UIBackgroundModes` entry is needed for it. |
+| `UNMutableNotificationContent.interruptionLevel` | `.timeSensitive` needs the Time Sensitive Notifications capability adding in Xcode. |
+| `Grid` / `GridRow` in a horizontal `ScrollView` | The table block's layout. |
+| `accessibilityAdjustableAction` | The rating block is one adjustable control rather than N buttons. |
+
 ### Known limitations
 
 Deliberate, not oversights:
@@ -105,6 +116,20 @@ All flagged rather than silently taken:
    In an editable text view a tap places the caret, which is correct; you cannot
    edit text you cannot click into. When the caret sits inside a link, an open
    action appears in the bar instead.
+6. **`metric.value` and `rating.value` are optional; `table` gained a `caption`
+   and `rating` a `symbol`.** §5 lists field names, not optionality. An unfilled
+   metric is not a measurement of zero and must not pull a chart down to the
+   axis, so it stores as absent.
+7. **`Core/Timers/` is a new directory.** §3's tree has no home for a service
+   that owns both `AVAudioSession` and `UNUserNotificationCenter`; filing it
+   under `Audio/` would misdescribe it.
+8. **No `UIBackgroundModes: audio`.** §7 specifies `AVAudioSession` + a local
+   notification for rest timers. The session here only makes the completion
+   sound audible over music and with the ringer switch off. Background delivery
+   is the notification's job — claiming the audio background mode for a notes
+   app that plays no continuous audio is an App Review rejection waiting to
+   happen. `.timeSensitive` interruption level does need the Time Sensitive
+   Notifications capability adding in Xcode.
 
 ---
 
@@ -138,6 +163,10 @@ Adding a theme or a paper stock is likewise one JSON file in
 | `WikiLinkTests` | Link and draft parsing, malformed brackets, UTF-16 offsets |
 | `TypewriterScrollerTests` | Anchoring, the jitter deadband, clamping at both ends, the reserved bottom inset |
 | `LinkGraphTests` / `LinkIndexTests` | Both directions stay consistent, links resolve by title and by stored id, a renamed target keeps its edge, unresolved titles are kept |
+| `FormulaTests` | Arithmetic and precedence, aggregations, lookups, a running total and a volume load, and every malformed input being rejected rather than guessed at |
+| `MetricSeriesTests` | Daily bucketing, moving averages, scoped series queries, idempotent recording, personal records excluding themselves, label slugging |
+| `DataBlockPayloadTests` | Round-trip for all six new payloads, clamping, ragged-table repair, unknown enums degrading |
+| `RestTimerTests` | Remaining time from the wall clock, finishing, pausing, encoding for relaunch |
 
-Still owed by §9: formula evaluation, geofence budget manager, and vault
-encrypt/decrypt — those arrive with Phases 3, 4 and 8.
+Still owed by §9: the geofence budget manager and vault encrypt/decrypt, which
+arrive with Phases 4 and 8.

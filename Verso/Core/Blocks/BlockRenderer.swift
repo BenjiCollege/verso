@@ -21,6 +21,18 @@ struct BlockRenderer: View {
             ListBlockView(block: block)
         case .divider:
             DividerBlockView(block: block)
+        case .metric:
+            MetricBlockView(block: block)
+        case .timer:
+            TimerBlockView(block: block)
+        case .formula:
+            FormulaBlockView(block: block)
+        case .progress:
+            ProgressBlockView(block: block)
+        case .rating:
+            RatingBlockView(block: block)
+        case .table:
+            TableBlockView(block: block)
         case .some(let type):
             UnsupportedBlockView(typeName: String(localized: type.displayName), systemImage: type.systemImage)
         case nil:

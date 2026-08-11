@@ -129,16 +129,20 @@ struct BlockPayloadRoundTripTests {
         }
     }
 
-    @Test("Phase 1 implements exactly the five declared block types")
-    func registryImplementsPhaseOneTypes() {
-        #expect(BlockRegistry.shared.implementedTypes == [.text, .heading, .checklist, .list, .divider])
+    @Test("The registry implements exactly the types shipped so far")
+    func registryImplementsShippedTypes() {
+        #expect(BlockRegistry.shared.implementedTypes == [
+            .text, .heading, .checklist, .list,
+            .metric, .timer, .table, .formula, .progress, .rating,
+            .divider,
+        ])
     }
 
     @Test("Registry refuses a type it has no payload for")
     func registryRejectsUnimplementedType() {
-        #expect(!BlockRegistry.shared.isImplemented(.metric))
-        #expect(throws: BlockRegistryError.unimplementedType(.metric)) {
-            _ = try BlockRegistry.shared.makeDefaultData(for: .metric)
+        #expect(!BlockRegistry.shared.isImplemented(.sketch))
+        #expect(throws: BlockRegistryError.unimplementedType(.sketch)) {
+            _ = try BlockRegistry.shared.makeDefaultData(for: .sketch)
         }
     }
 
