@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 import Testing
-@testable import Verso
+@testable import VersoKit
 
 /// Guards the CloudKit rules in section 4. These are the constraints that fail
 /// at first sync rather than at compile time, which is exactly why they need a

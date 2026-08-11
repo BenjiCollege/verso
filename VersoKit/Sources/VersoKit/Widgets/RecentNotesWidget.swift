@@ -7,8 +7,11 @@ import WidgetKit
 /// Reads the app-group store directly. Locked and hidden notes never reach it —
 /// the filtering is `VaultPolicy`'s, the same call the library and Spotlight
 /// make, so a widget cannot drift into showing something the app would not.
-struct RecentNotesWidget: Widget {
-    var body: some WidgetConfiguration {
+public struct RecentNotesWidget: Widget {
+
+    public init() {}
+
+    public var body: some WidgetConfiguration {
         StaticConfiguration(kind: "RecentNotes", provider: RecentNotesProvider()) { entry in
             RecentNotesView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
@@ -124,8 +127,11 @@ struct RecentNotesView: View {
 
 /// One button that opens capture. The Lock Screen case, where the whole value
 /// is the number of taps between having a thought and having written it down.
-struct QuickCaptureWidget: Widget {
-    var body: some WidgetConfiguration {
+public struct QuickCaptureWidget: Widget {
+
+    public init() {}
+
+    public var body: some WidgetConfiguration {
         StaticConfiguration(kind: "QuickCapture", provider: CaptureProvider()) { _ in
             Link(destination: VersoURL.capture) {
                 VStack(spacing: 4) {

@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import Verso
+@testable import VersoKit
 
 @Suite("Block payload round-trip")
 struct BlockPayloadRoundTripTests {

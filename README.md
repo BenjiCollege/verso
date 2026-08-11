@@ -64,7 +64,7 @@ are ordered by how much of the build they would block.
 
 | Area | What to verify |
 |---|---|
-| `Verso.xcodeproj/project.pbxproj` | Hand-written, using Xcode 16+ synchronized filesystem groups (`objectVersion = 77`). If Xcode refuses it, create a fresh project and drag the `Verso/` and `VersoTests/` folders in — the source tree is the project structure by design, so nothing else needs to move. |
+| `Verso.xcodeproj/project.pbxproj` | Hand-written, using Xcode 16+ synchronized filesystem groups (`objectVersion = 77`) and a local Swift package. If Xcode refuses it, create a fresh project with an app target, a widget extension and a test target, then add `VersoKit` as a local package and drag the three thin folders in — almost everything lives in the package, so there is very little to re-wire. |
 | `@Entry` macro | Used for every environment key. Xcode 16+ macro. |
 | `ModelConfiguration(_:schema:isStoredInMemoryOnly:allowsSave:cloudKitDatabase:)` | Argument label order and the `.private(_:)` case. |
 | `SWIFT_APPROACHABLE_CONCURRENCY` | Enabled; `SWIFT_DEFAULT_ACTOR_ISOLATION` is deliberately left at `nonisolated`. |
@@ -186,13 +186,16 @@ Phase 11 rests on PDFKit geometry, where a sign error is silent and total:
 | `PDFAnnotation(bounds:forType:.ink)` with `add(_ path:)` | Layered export. Confirm the annotations are selectable in Preview and Adobe Acrobat, not just visible. |
 | `PKDrawing.transformed(using:)` | Ink is stored in page space and scaled for display; a wrong scale is invisible until the window resizes. |
 
-Phase 12's project-file work is the single most likely thing in the repo to need
-fixing, and the fix is well understood:
+Phase 12's system integration, and the package boundary it sits on:
 
 | Area | What to verify |
 |---|---|
-| **The widget target's source membership** | `VersoWidgets` claims the `Verso` synchronized group with a `PBXFileSystemSynchronizedBuildFileExceptionSet` excluding `App/`, `Features/` and the few `Core` files that import views. Hand-writing that is fragile. **If Xcode rejects it, or the extension fails to compile, the proper fix is to extract `Core/` into a local Swift package that both targets depend on** — which is what this would have been from the start on a Mac. |
+| The local package reference | `Verso.xcodeproj` declares `VersoKit` as an `XCLocalSwiftPackageReference` and all three targets take the product. If Xcode dislikes the hand-written entries, deleting them and re-adding the package through *File → Add Package Dependencies → Add Local* rebuilds them correctly in a few clicks. |
+| `AppIntentsPackage` | Intents defined in a package are compiled but **not registered** unless the app and the extension each declare an `AppIntentsPackage` including `VersoKitPackage`. Both do. Without it Shortcuts is simply empty and nothing explains why — so check Shortcuts actually lists the five intents. |
+| `Bundle.module` resource lookup | Themes, stocks, templates, the exercise catalogue and the AHAP files. `ThemeLoaderTests` and `TemplateLibraryTests` fail loudly if this is wrong, which is the intended alarm. |
+| `@testable import VersoKit` from an Xcode test target | Needs the package built with testability, which Debug does by default. |
 | `groupContainer: .identifier(...)` on `ModelConfiguration` | The app, widget and intents all read one store through the app group. Getting this wrong means three processes quietly using three different databases. |
+| `platforms: [.iOS(.v26)]` in `Package.swift` | Must not be older than the app's deployment target. |
 | `ControlWidget` / `ControlWidgetButton` | Control Centre and the Action Button. |
 | `AppShortcutsProvider` phrases | `\(.applicationName)` must appear in every phrase or the build fails. |
 | `@Parameter` on `AppIntent` with a custom `AppEntity` | `NoteEntity` and `TemplateEntity` and their `EntityStringQuery` conformances. |
@@ -369,8 +372,45 @@ All flagged rather than silently taken:
 
 ## Structure
 
-The folder layout in §3 of CLAUDE.md *is* the Xcode project structure —
-synchronized groups mean adding a file needs no project-file edit.
+Verso is a thin Xcode project over a local Swift package.
+
+```
+VersoKit/                 the whole app, as a package
+  Package.swift
+  Sources/VersoKit/
+    App/                  VersoScene, RootView, NavigationRequest
+    Core/                 §3's Core, unchanged
+    Features/             §3's Features, unchanged
+    Intents/              App Intents and their entities
+    Widgets/              the widget and control views
+    Resources/            themes, stocks, templates, exercises, haptics
+Verso/                    the app target
+  App/VersoApp.swift      @main, and nothing else
+  Resources/              asset catalogue, PrivacyInfo.xcprivacy
+VersoWidgets/             the extension target
+  VersoWidgetBundle.swift @main, and nothing else
+VersoTests/               unit tests, @testable import VersoKit
+Config/                   Info.plists and entitlements
+```
+
+Both targets depend on the one package, so there is exactly one copy of the
+engine, the models and the store, and the compiler enforces that rather than a
+project-file membership list.
+
+**The public surface is five types**, across 149 files: `VersoScene`,
+`RecentNotesWidget`, `QuickCaptureWidget`, `VersoCaptureControl`, and
+`VersoKitPackage`. Everything else is internal. That is deliberate — what the
+app target can reach is a decision rather than an accident of what happened to
+be visible, and it means adding to the engine never widens the API by accident.
+
+Resources come from `Bundle.module`. SwiftPM's `.process` keeps the folder
+structure intact, which is what let `BundleResourceLoader` drop the
+scan-the-whole-bundle fallback it needed when Xcode's synchronized groups were
+doing the packaging.
+
+The folder layout inside `Sources/VersoKit` is §3 of CLAUDE.md, unchanged —
+synchronized groups and SwiftPM both take a directory as-is, so adding a file
+needs no project-file edit either way.
 
 Two rules keep the engine content-agnostic, and both are enforced by tests:
 

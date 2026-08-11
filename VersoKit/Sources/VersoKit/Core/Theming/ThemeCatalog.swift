@@ -21,7 +21,7 @@ struct ThemeCatalog: Sendable {
         self.stocks = stocks.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
-    static func load(from bundle: Bundle = .main) -> ThemeCatalog {
+    static func load(from bundle: Bundle = .module) -> ThemeCatalog {
         ThemeCatalog(
             themes: BundleResourceLoader.loadAll(Theme.self, kind: "theme", subdirectory: "Themes", in: bundle),
             stocks: BundleResourceLoader.loadAll(Stock.self, kind: "stock", subdirectory: "Stocks", in: bundle)

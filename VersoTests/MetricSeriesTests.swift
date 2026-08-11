@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 import Testing
-@testable import Verso
+@testable import VersoKit
 
 @Suite("Metric series")
 struct MetricSeriesTests {

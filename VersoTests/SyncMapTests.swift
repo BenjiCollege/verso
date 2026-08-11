@@ -1,7 +1,7 @@
 import AVFoundation
 import Foundation
 import Testing
-@testable import Verso
+@testable import VersoKit
 
 @Suite("Sync map")
 struct SyncMapTests {

@@ -18,33 +18,14 @@
 
 /* Begin PBXBuildFile section */
 		VE00B0000000000000000001 /* VersoWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = VE00F0000000000000000005 /* VersoWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		VE00B0000000000000000002 /* VersoKit in Frameworks */ = {isa = PBXBuildFile; productRef = VE00K0000000000000000001 /* VersoKit */; };
+		VE00B0000000000000000003 /* VersoKit in Frameworks */ = {isa = PBXBuildFile; productRef = VE00K0000000000000000002 /* VersoKit */; };
+		VE00B0000000000000000004 /* VersoKit in Frameworks */ = {isa = PBXBuildFile; productRef = VE00K0000000000000000003 /* VersoKit */; };
 /* End PBXBuildFile section */
-
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		VE00E0000000000000000001 /* Exceptions for "Verso" folder in "VersoWidgets" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				App,
-				Features,
-				"Core/Blocks/BlockRenderer.swift",
-				"Core/Blocks/BlockPayloadEditor.swift",
-				"Core/Blocks/AttributedText.swift",
-				"Core/Metrics/MetricChart.swift",
-				"Core/Motion/MotionResolver.swift",
-				"Core/Motion/RevealEngine.swift",
-				"Core/Theming/ThemeEnvironment.swift",
-				"Core/Theming/Typography.swift",
-			);
-			target = VE00T0000000000000000003 /* VersoWidgets */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		VE00S0000000000000000001 /* Verso */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				VE00E0000000000000000001 /* Exceptions for "Verso" folder in "VersoWidgets" target */,
-			);
 			path = Verso;
 			sourceTree = "<group>";
 		};
@@ -65,6 +46,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				VE00B0000000000000000002 /* VersoKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -72,6 +54,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				VE00B0000000000000000004 /* VersoKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -79,6 +62,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				VE00B0000000000000000003 /* VersoKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -88,6 +72,7 @@
 		VE00G0000000000000000000 = {
 			isa = PBXGroup;
 			children = (
+				VE00G0000000000000000003 /* Packages */,
 				VE00S0000000000000000001 /* Verso */,
 				VE00S0000000000000000003 /* VersoWidgets */,
 				VE00S0000000000000000002 /* VersoTests */,
@@ -117,6 +102,13 @@
 			path = Config;
 			sourceTree = "<group>";
 		};
+		VE00G0000000000000000003 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -138,6 +130,9 @@
 				VE00S0000000000000000001 /* Verso */,
 			);
 			name = Verso;
+			packageProductDependencies = (
+				VE00K0000000000000000001 /* VersoKit */,
+			);
 			productName = Verso;
 			productReference = VE00F0000000000000000001 /* Verso.app */;
 			productType = "com.apple.product-type.application";
@@ -159,6 +154,9 @@
 				VE00S0000000000000000002 /* VersoTests */,
 			);
 			name = VersoTests;
+			packageProductDependencies = (
+				VE00K0000000000000000003 /* VersoKit */,
+			);
 			productName = VersoTests;
 			productReference = VE00F0000000000000000002 /* VersoTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -177,9 +175,11 @@
 			);
 			fileSystemSynchronizedGroups = (
 				VE00S0000000000000000003 /* VersoWidgets */,
-				VE00S0000000000000000001 /* Verso */,
 			);
 			name = VersoWidgets;
+			packageProductDependencies = (
+				VE00K0000000000000000002 /* VersoKit */,
+			);
 			productName = VersoWidgets;
 			productReference = VE00F0000000000000000005 /* VersoWidgets.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -229,6 +229,9 @@
 			);
 			mainGroup = VE00G0000000000000000000;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				VE00N0000000000000000001 /* XCLocalSwiftPackageReference "VersoKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = VE00G0000000000000000001 /* Products */;
 			projectDirPath = "";
@@ -554,6 +557,28 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		VE00N0000000000000000001 /* XCLocalSwiftPackageReference "VersoKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = VersoKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		VE00K0000000000000000001 /* VersoKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = VersoKit;
+		};
+		VE00K0000000000000000002 /* VersoKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = VersoKit;
+		};
+		VE00K0000000000000000003 /* VersoKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = VersoKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = VE00J0000000000000000001 /* Project object */;
 }

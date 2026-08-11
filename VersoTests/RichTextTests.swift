@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 import UIKit
-@testable import Verso
+@testable import VersoKit
 
 @Suite("Inline styles and archiving")
 struct InlineStyleTests {

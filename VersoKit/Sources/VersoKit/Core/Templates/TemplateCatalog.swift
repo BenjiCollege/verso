@@ -16,7 +16,7 @@ struct TemplateCatalog: Sendable {
         self.all = all.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
-    static func load(from bundle: Bundle = .main) -> TemplateCatalog {
+    static func load(from bundle: Bundle = .module) -> TemplateCatalog {
         let catalog = TemplateCatalog(
             all: BundleResourceLoader.loadAll(Template.self, kind: "template", subdirectory: "Templates", in: bundle)
         )

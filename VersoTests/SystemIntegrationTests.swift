@@ -2,7 +2,7 @@ import CoreSpotlight
 import Foundation
 import SwiftData
 import Testing
-@testable import Verso
+@testable import VersoKit
 
 @Suite("Deep links")
 struct VersoURLTests {

@@ -74,7 +74,7 @@ struct Catalog: Identifiable, Hashable, Sendable, Codable {
 struct CatalogLibrary: Sendable {
     let catalogs: [Catalog]
 
-    static func load(from bundle: Bundle = .main) -> CatalogLibrary {
+    static func load(from bundle: Bundle = .module) -> CatalogLibrary {
         CatalogLibrary(
             catalogs: BundleResourceLoader.loadAll(
                 Catalog.self,

@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 import Testing
-@testable import Verso
+@testable import VersoKit
 
 @Suite("Theme loader")
 struct ThemeLoaderTests {

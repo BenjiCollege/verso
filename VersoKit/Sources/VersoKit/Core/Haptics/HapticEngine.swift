@@ -168,12 +168,8 @@ final class HapticEngine {
 
     // MARK: - Loading
 
-    /// Xcode's synchronized groups may or may not preserve the `Haptics`
-    /// folder in the bundle, so both are tried — the same belt-and-braces the
-    /// JSON resources use.
     static func url(for pattern: Pattern) -> URL? {
-        Bundle.main.url(forResource: pattern.rawValue, withExtension: "ahap")
-            ?? Bundle.main.url(forResource: pattern.rawValue, withExtension: "ahap", subdirectory: "Haptics")
+        BundleResourceLoader.url(forResource: pattern.rawValue, extension: "ahap", subdirectory: "Haptics")
     }
 
     private func url(for pattern: Pattern) -> URL? {

@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 import Testing
-@testable import Verso
+@testable import VersoKit
 
 @Suite("Fore-edge")
 struct ForeEdgeModelTests {

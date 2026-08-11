@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 import Testing
-@testable import Verso
+@testable import VersoKit
 
 /// The fallback is what §1 promises: the app fully usable with no Apple
 /// Intelligence. So it is the half that gets tested — the model-backed path
