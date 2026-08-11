@@ -11,6 +11,7 @@ struct SettingsView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
     @Environment(VaultService.self) private var vault
+    @Environment(IntelligenceService.self) private var intelligence
 
     @State private var isShowingVault = false
 
@@ -85,6 +86,24 @@ struct SettingsView: View {
                             .versoText(.chromeCaption)
                             .foregroundStyle(theme.inkSecondary)
                     }
+                }
+
+                Section {
+                    LabeledContent("Suggestions") {
+                        Text(intelligence.isUsingOnDeviceModel
+                             ? String(localized: "On-device model")
+                             : String(localized: "Built-in"))
+                            .foregroundStyle(theme.inkSecondary)
+                    }
+                    if let explanation = intelligence.availability.explanation {
+                        Text(explanation)
+                            .versoText(.chromeCaption)
+                            .foregroundStyle(theme.inkSecondary)
+                    }
+                } header: {
+                    Text("Intelligence")
+                } footer: {
+                    Text("Titles, summaries and suggestions are worked out on this device either way. Nothing you write is ever sent anywhere.")
                 }
 
                 Section("Privacy") {

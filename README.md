@@ -8,13 +8,13 @@ state of the build.
 
 ---
 
-## Status: Phases 1–8 complete, not yet compiled
+## Status: Phases 1–9 complete, not yet compiled
 
 Phases 1 (Foundation), 2 (Editor), 3 (Data blocks), 4 (Time and place),
-5 (Templates), 6 (Fore-edge and history), 7 (Reveal and share) and 8 (Vault) are
-written in full. None of it has **ever been compiled, run, or checked against
-the iOS 26 SDK**, because it was authored on Windows 11 with no Xcode, no Swift
-toolchain, and no simulator available.
+5 (Templates), 6 (Fore-edge and history), 7 (Reveal and share), 8 (Vault) and
+9 (Intelligence) are written in full. None of it has **ever been compiled, run,
+or checked against the iOS 26 SDK**, because it was authored on Windows 11 with
+no Xcode, no Swift toolchain, and no simulator available.
 
 **Phase 8 is security code that has never run.** Treat every claim it makes as
 unverified until it has been exercised on a device: the encryption round-trips
@@ -136,6 +136,19 @@ Phase 8 is the highest-consequence unverified code in the project:
 | `CCKeyDerivationPBKDF` | PBKDF2 at 310,000 iterations. Time it on the oldest supported device — if it is unusably slow, lower it deliberately rather than by accident. |
 | Privacy screen timing | It must appear on `.inactive`, before iOS takes the app-switcher snapshot. `.background` is too late. |
 
+Phase 9's model-backed half is the least verifiable code in the project — the
+FoundationModels API was written from knowledge, and none of it can run in the
+simulator. The fallback half is plain Swift and is tested:
+
+| Area | What to verify |
+|---|---|
+| `SystemLanguageModel.default.availability` | The `.unavailable(reason)` cases and their names. Everything gates on this. |
+| `@Generable` / `@Guide` | The macro spelling, and whether optional properties (`Double?` on a generated item) are permitted. |
+| `LanguageModelSession(instructions:)` and `respond(to:generating:)` | Signature, and whether `response.content` is the right accessor. |
+| `SFSpeechRecognizer.supportsOnDeviceRecognition` | iOS 26 may prefer the newer `SpeechAnalyzer` API. Either way, `requiresOnDeviceRecognition` is what keeps §1's no-server promise and must not be dropped. |
+| `NLEmbedding.sentenceEmbedding(for:)` | Returns nil for many languages; the lexical path has to carry those. |
+| `AVAudioApplication.requestRecordPermission()` | Replaced `AVAudioSession.requestRecordPermission` in iOS 17. |
+
 ### Known limitations
 
 Deliberate, not oversights:
@@ -242,7 +255,22 @@ All flagged rather than silently taken:
     cosmetic.
 19. **Leaving the app closes the vault.** A vault that stays open in your pocket
     is a Face ID gate wearing a costume.
-20. **No `UIBackgroundModes: audio`.** §7 specifies `AVAudioSession` + a local
+20. **Semantic search is not gated behind Apple Intelligence.** §7 lists it
+    under Foundation Models, but sentence embeddings come from `NLEmbedding`,
+    which is on-device and available far more widely. Where embeddings do not
+    exist for the user's language, lexical scoring carries the whole feature
+    rather than half of it.
+21. **The AI affordances are never hidden — only the model behind them
+    changes.** §7 says to hide unavailable affordances entirely, and dictation
+    obeys that literally: no on-device transcription, no microphone button.
+    But suggestions, titling and capture always work, because §1 requires a
+    non-AI fallback for each. Hiding those buttons on a non-Apple-Intelligence
+    device would advertise an absence that isn't there. The one line in
+    Settings says which is doing the work.
+22. **Dictation refuses rather than going online.** If a device cannot
+    transcribe on-device, the feature reports itself unavailable instead of
+    letting `SFSpeechRecognizer` send audio to a server.
+23. **No `UIBackgroundModes: audio`.** §7 specifies `AVAudioSession` + a local
    notification for rest timers. The session here only makes the completion
    sound audible over music and with the ringer switch off. Background delivery
    is the notification's job — claiming the audio background mode for a notes
@@ -305,5 +333,9 @@ Adding a theme or a paper stock is likewise one JSON file in
 | `VaultCipherTests` | Round-trip, ciphertext leaking nothing, tampering detected, wrong key rejected, unique nonces, idempotent sealing |
 | `PassphraseKDFTests` | Deterministic derivation, salts mattering and being random, Unicode normalisation, wrap/unwrap, the synced blob revealing no key material |
 | `VaultKeyringTests` | Locked notes storing ciphertext and unlocked ones storing plaintext, a closed vault refusing, and all four §7 exclusions |
+| `HeuristicIntelligenceTests` | Titling, tag suggestion staying inside the existing vocabulary, summaries never inventing a claim, actions distinguishing imperatives from the past tense |
+| `TextStructuringTests` | Markdown, bullets, numbered lists, quantities and units, years not being quantities, and a capture instantiating through the normal template path |
+| `NoteDigestTests` | A locked note digesting to nothing |
+| `SemanticIndexTests` | Literal matching, title outranking body, every query word having to appear, locked notes never surfacing |
 
 Still owed by §9: vault encrypt/decrypt, which arrives with Phase 8.

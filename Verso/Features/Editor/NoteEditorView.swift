@@ -21,6 +21,7 @@ struct NoteEditorView: View {
     @Environment(LinkIndex.self) private var linkIndex
     @Environment(HapticEngine.self) private var haptics
     @Environment(VaultService.self) private var vault
+    @Environment(IntelligenceService.self) private var intelligence
 
     @State private var session = TextEditingSession()
     @State private var scrollPosition = ScrollPosition()
@@ -30,6 +31,7 @@ struct NoteEditorView: View {
     @State private var isReading = false
     @State private var isExporting = false
     @State private var isShowingVaultGate = false
+    @State private var isAssisting = false
     @State private var lockFailure: String?
     @State private var isFocusMode = false
     @State private var isCaretSuppressed = false
@@ -90,6 +92,9 @@ struct NoteEditorView: View {
         .sheet(isPresented: $isShowingVaultGate) {
             VaultGateView()
         }
+        .sheet(isPresented: $isAssisting) {
+            AssistSheet(note: note)
+        }
         .alert(
             "Couldn't change the lock",
             isPresented: Binding(get: { lockFailure != nil }, set: { if !$0 { lockFailure = nil } }),
@@ -116,7 +121,13 @@ struct NoteEditorView: View {
         }
         .onDisappear {
             versionStore.record(note)
-            Task { await linkIndex.noteDidChange(note.id) }
+            Task {
+                // Section 7: auto-title on first save. Only ever fills an empty
+                // title — overwriting one somebody chose would be the app
+                // deciding it knows better.
+                await intelligence.autoTitleIfNeeded(note)
+                await linkIndex.noteDidChange(note.id)
+            }
         }
     }
 
@@ -308,6 +319,18 @@ struct NoteEditorView: View {
                 } label: {
                     Label("Reorder Blocks", systemImage: "arrow.up.arrow.down")
                 }
+                // Always present, because it always works: with the on-device
+                // model where there is one, and by ordinary text processing
+                // everywhere else. Section 1 requires the fallback; hiding the
+                // button on some devices would advertise its absence.
+                if !note.isLocked {
+                    Button {
+                        isAssisting = true
+                    } label: {
+                        Label("Suggestions", systemImage: "sparkles")
+                    }
+                }
+
                 Button {
                     isReading = true
                 } label: {

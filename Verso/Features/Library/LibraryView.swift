@@ -19,6 +19,9 @@ struct LibraryView: View {
     private var unpinnedNotes: [Note] { notes.filter { !$0.isPinned } }
 
     @State private var isChoosingTemplate = false
+    @State private var isCapturing = false
+    @State private var query = ""
+    @State private var hits: [SearchHit] = []
     @State private var isShowingSettings = false
     @State private var isShowingTrash = false
     @State private var failure: String?
@@ -26,7 +29,9 @@ struct LibraryView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if notes.isEmpty {
+                if !query.isEmpty {
+                    searchResults
+                } else if notes.isEmpty {
                     emptyState
                 } else {
                     noteList
@@ -41,8 +46,15 @@ struct LibraryView: View {
             }
             .navigationTitle("Verso")
             .toolbar { toolbarContent }
+            .searchable(text: $query, prompt: Text("Search notes"))
+            .task(id: query) {
+                await runSearch()
+            }
             .sheet(isPresented: $isChoosingTemplate) {
                 TemplateGalleryView(onSelect: createNote)
+            }
+            .sheet(isPresented: $isCapturing) {
+                CaptureSheet { _ in }
             }
             .sheet(isPresented: $isShowingSettings) {
                 SettingsView()
@@ -102,6 +114,58 @@ struct LibraryView: View {
         }
     }
 
+    /// Semantic where the device supports it, lexical everywhere. Both paths
+    /// exclude locked and hidden notes.
+    @ViewBuilder
+    private var searchResults: some View {
+        if hits.isEmpty {
+            ContentUnavailableView.search(text: query)
+        } else {
+            List {
+                ForEach(hits) { hit in
+                    if let note = notes.first(where: { $0.id == hit.noteID }) {
+                        NavigationLink(value: note) {
+                            VStack(alignment: .leading, spacing: Layout.Space.hair) {
+                                NoteRowView(note: note)
+                                if !hit.excerpt.isEmpty {
+                                    Text(hit.excerpt)
+                                        .versoText(.chromeCaption)
+                                        .foregroundStyle(theme.inkSecondary)
+                                        .lineLimit(2)
+                                }
+                            }
+                        }
+                        .listRowBackground(theme.stock)
+                    }
+                }
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+        }
+    }
+
+    private func runSearch() async {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            hits = []
+            return
+        }
+        try? await Task.sleep(for: .milliseconds(200))
+        guard !Task.isCancelled else { return }
+
+        let entries = notes.map { note in
+            SemanticIndex.Entry(
+                noteID: note.id,
+                title: note.title,
+                text: VaultPolicy.isEligibleForIndexing(note)
+                    ? note.orderedBlocks.map { BlockRegistry.shared.plainText(for: $0) }.joined(separator: "\n")
+                    : "",
+                isLocked: !VaultPolicy.isEligibleForIndexing(note)
+            )
+        }
+        hits = SemanticIndex().search(trimmed, in: entries)
+    }
+
     private var emptyState: some View {
         ContentUnavailableView {
             Label("No notes yet", systemImage: "book.closed")
@@ -116,10 +180,21 @@ struct LibraryView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
-            Button {
-                isChoosingTemplate = true
+            Menu {
+                Button {
+                    isChoosingTemplate = true
+                } label: {
+                    Label("From a Template", systemImage: "doc.on.doc")
+                }
+                Button {
+                    isCapturing = true
+                } label: {
+                    Label("Paste or Dictate", systemImage: "sparkles")
+                }
             } label: {
                 Label("New Note", systemImage: "square.and.pencil")
+            } primaryAction: {
+                isChoosingTemplate = true
             }
         }
 

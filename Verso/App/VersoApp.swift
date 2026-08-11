@@ -17,6 +17,7 @@ struct VersoApp: App {
     @State private var timers = RestTimerService()
     @State private var userTemplates = UserTemplateStore()
     @State private var haptics = HapticEngine()
+    @State private var intelligence = IntelligenceService()
     @State private var schedule: ScheduleService
     @State private var geofences: GeofenceService
     @State private var vault: VaultService
@@ -60,6 +61,7 @@ struct VersoApp: App {
                 .environment(timers)
                 .environment(userTemplates)
                 .environment(haptics)
+                .environment(intelligence)
                 .environment(schedule)
                 .environment(geofences)
                 .environment(geofences.authority)

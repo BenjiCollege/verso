@@ -24,6 +24,10 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Verso uses the microphone so you can dictate a note instead of typing it. Recording stays on this device.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Verso turns what you dictate into a note. Transcription happens entirely on this device — your voice is never sent anywhere.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Verso uses Face ID to open your vault, so your locked notes can be encrypted on disk rather than merely hidden behind a screen.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
