@@ -17,6 +17,11 @@ extension EnvironmentValues {
 private struct ThemeApplier: ViewModifier {
     let theme: Theme
     let stock: Stock
+    /// Non-nil only when the user has pinned a theme rather than following the
+    /// system. Setting `preferredColorScheme` while *also* deriving the theme
+    /// from `\.colorScheme` would feed back on itself, so following the system
+    /// deliberately leaves the scheme alone.
+    let pinnedColorScheme: ColorScheme?
 
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -31,14 +36,14 @@ private struct ThemeApplier: ViewModifier {
             .environment(\.theme, resolved)
             .environment(\.stock, stock)
             // The chrome is glass and takes its cue from the system colour
-            // scheme, so a light theme must not leave dark toolbars behind.
-            .preferredColorScheme(resolved.colorScheme)
+            // scheme, so a pinned light theme must not leave dark toolbars behind.
+            .preferredColorScheme(pinnedColorScheme)
             .tint(resolved.accent)
     }
 }
 
 extension View {
-    func versoTheme(_ theme: Theme, stock: Stock) -> some View {
-        modifier(ThemeApplier(theme: theme, stock: stock))
+    func versoTheme(_ theme: Theme, stock: Stock, pinnedColorScheme: ColorScheme? = nil) -> some View {
+        modifier(ThemeApplier(theme: theme, stock: stock, pinnedColorScheme: pinnedColorScheme))
     }
 }
