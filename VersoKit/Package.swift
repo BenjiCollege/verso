@@ -1,4 +1,7 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
+//
+// 6.2 rather than 6.0 because `.iOS(.v26)` was introduced in PackageDescription
+// 6.2. Declaring 6.0 fails resolution outright with `'v26' is unavailable`.
 import PackageDescription
 
 /// Everything Verso is, apart from the two `@main` declarations that have to

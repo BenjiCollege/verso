@@ -28,3 +28,12 @@ Desktop.ini
 build/
 TestResults.xcresult/
 upload.log
+
+## Signing material — never commit. The repo is public; a leaked key is
+## compromised the moment it lands, and must be revoked, not deleted.
+*.p8
+*.p12
+*.mobileprovision
+*.cer
+*.certSigningRequest
+ExportOptions.generated.plist
