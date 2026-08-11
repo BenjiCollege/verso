@@ -8,12 +8,12 @@ state of the build.
 
 ---
 
-## Status: Phases 1–4 complete, not yet compiled
+## Status: Phases 1–5 complete, not yet compiled
 
-Phases 1 (Foundation), 2 (Editor), 3 (Data blocks) and 4 (Time and place) are
-written in full. None of it has **ever been compiled, run, or checked against
-the iOS 26 SDK**, because it was authored on Windows 11 with no Xcode, no Swift
-toolchain, and no simulator available.
+Phases 1 (Foundation), 2 (Editor), 3 (Data blocks), 4 (Time and place) and
+5 (Templates) are written in full. None of it has **ever been compiled, run, or
+checked against the iOS 26 SDK**, because it was authored on Windows 11 with no
+Xcode, no Swift toolchain, and no simulator available.
 
 Everything below is therefore written from knowledge of the frameworks rather
 than verified against the installed SDK, which is the opposite of the rule in
@@ -89,6 +89,15 @@ Phase 4 leans on Core Location's newest API, which is where its risk sits:
 | `@Observable` on an `NSObject` subclass | `LocationAuthority` is both, so it can be a `CLLocationManagerDelegate`. |
 | Always-authorisation flow | When In Use must be granted before Always can be requested. |
 
+Phase 5 is mostly JSON and pure Swift. What is left to verify:
+
+| Area | What to verify |
+|---|---|
+| `UTType(exportedAs:conformingTo:)` | Must match the `UTExportedTypeDeclarations` entry in `Info.plist` exactly, or `.versotemplate` files will not open in Verso. |
+| `fileImporter` + `ShareLink(item: URL)` | Template import and export. |
+| `ContentUnavailableView.search(text:)` | Empty states in the gallery and the catalog picker. |
+| Application Support directory | User templates are written there; confirm it exists or is created on first save. |
+
 ### Known limitations
 
 Deliberate, not oversights:
@@ -104,6 +113,14 @@ Deliberate, not oversights:
   change, and therefore yours to approve.
 - **Headings and list items are still plain `TextField`s.** Only `text` blocks
   are rich. Nothing in §5 gives them inline marks.
+- **User templates do not sync.** They are files in Application Support, which
+  is what makes export and import the same bytes that are already on disk — a
+  template changes hands as a file and no server is involved. Syncing them would
+  mean a `UserTemplate` `@Model`, which is a schema change and therefore yours
+  to approve.
+- **The exercise library holds ~170 entries, not ~200.** §7 asks for about two
+  hundred. Padding it with near-duplicates would make the picker worse, so the
+  gap is left visible; adding more is one JSON file edit and no Swift.
 
 ### Deviations from the specification
 
@@ -143,7 +160,17 @@ All flagged rather than silently taken:
     occurrences — `UNCalendarNotificationTrigger` can only repeat the simple
     shapes, and everything else is scheduled a few ahead and topped up. Parsing
     RRULE to do that would be a lot of surface for no gain.
-11. **No `UIBackgroundModes: audio`.** §7 specifies `AVAudioSession` + a local
+11. **`metric` gained four options: `showsPreviousEntry`, `restTimerSeconds`,
+    `decomposition` and `catalogID`.** These are how §7's strength
+    non-negotiables are met without a single template identifier in Swift.
+    Every one is a property of *a metric* — a cooldown, a previous reading, a
+    decomposition into available units, a list to pick a name from — and every
+    one is switched on by JSON. `Decomposition` is deliberately named for what
+    it does rather than for plates.
+12. **"One-tap repeat set" is table row duplication.** Repeating a row copies
+    its values and clears its checkboxes, which is what "same again" means for
+    any table, not just a set of squats.
+13. **No `UIBackgroundModes: audio`.** §7 specifies `AVAudioSession` + a local
    notification for rest timers. The session here only makes the completion
    sound audible over music and with the ringer switch off. Background delivery
    is the notification's job — claiming the audio background mode for a notes
@@ -191,5 +218,10 @@ Adding a theme or a paper stock is likewise one JSON file in
 | `GeofenceCandidateBuilderTests` | Which places are actionable, trashed notes contributing nothing, null-island rejection, radius clamping |
 | `RecurrenceTests` | Every frequency and interval, multi-weekday weeks, month-end clamping, end dates and occurrence counts, and which series map onto a repeating system trigger |
 | `ScheduleNotificationPlannerTests` | Alarm offsets, past alarms dropped, repeating vs concrete scheduling, identifier scoping, and the pending-notification budget |
+| `TemplateLibraryTests` | All 24 templates plus blank, six per category, every one instantiable, every formula parsing, every theme/stock reference resolving, and the strength template switching on all six non-negotiables |
+| `CatalogTests` | The exercise library loads, ids are unique and match the metric block's slug, search covers names and facets |
+| `DecompositionTests` | Exact loads, greedy order, shortfall reported rather than rounded away, no floating-point drift at 1.25kg granularity |
+| `TemplateAuthoringTests` | Structure preserved and personal data dropped, export/import round trip, unknown block types skipped |
+| `UserTemplateStoreTests` | Save, rename, delete, export/import minting a new id, hostile filenames sanitised |
 
 Still owed by §9: vault encrypt/decrypt, which arrives with Phase 8.

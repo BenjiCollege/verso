@@ -1,0 +1,31 @@
+{
+  "kind": "template",
+  "id": "bulk-run",
+  "name": "Bulk Run",
+  "summary": "Big-shop list with unit prices and a budget to stay under.",
+  "systemImage": "shippingbox",
+  "category": "shopping",
+  "titleFormat": "Bulk Run — {date}",
+  "blocks": [
+    { "type": "heading", "payload": { "level": 2, "text": "Bulk run" } },
+    {
+      "type": "checklist",
+      "payload": {
+        "groupBy": "group",
+        "itemFields": ["quantity", "unit", "price", "note"],
+        "groups": [
+          { "id": "dry", "label": "Dry goods", "position": 0 },
+          { "id": "tins", "label": "Tins & jars", "position": 1 },
+          { "id": "frozen", "label": "Frozen", "position": 2 },
+          { "id": "paper", "label": "Paper & cleaning", "position": 3 },
+          { "id": "pets", "label": "Pets", "position": 4 }
+        ],
+        "items": []
+      }
+    },
+    { "type": "divider", "payload": { "style": "rule" } },
+    { "type": "formula", "payload": { "label": "Total", "expression": "sum(subtotal)" } },
+    { "type": "progress", "payload": { "label": "Items packed", "current": 0, "target": 20, "style": "bar" } },
+    { "type": "text", "payload": { "plain": "Worth buying in bulk only if it stores well and gets used." } }
+  ]
+}

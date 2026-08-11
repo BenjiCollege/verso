@@ -1,0 +1,41 @@
+{
+  "kind": "template",
+  "id": "budget",
+  "name": "Budget",
+  "summary": "A month of money in and out, with what's left worked out for you.",
+  "systemImage": "banknote",
+  "category": "life",
+  "stockID": "ledger",
+  "titleFormat": "Budget — {date}",
+  "blocks": [
+    { "type": "heading", "payload": { "level": 1, "text": "Month" } },
+    { "type": "metric", "payload": { "label": "Income", "seriesID": "monthly-income", "unit": "", "showsPreviousEntry": true } },
+    { "type": "divider", "payload": { "style": "rule" } },
+    { "type": "heading", "payload": { "level": 2, "text": "Outgoings" } },
+    {
+      "type": "checklist",
+      "payload": {
+        "groupBy": "group",
+        "itemFields": ["price", "note"],
+        "groups": [
+          { "id": "fixed", "label": "Fixed", "position": 0 },
+          { "id": "food", "label": "Food", "position": 1 },
+          { "id": "transport", "label": "Transport", "position": 2 },
+          { "id": "fun", "label": "Fun", "position": 3 },
+          { "id": "saving", "label": "Saving", "position": 4 }
+        ],
+        "items": [
+          { "label": "Rent or mortgage", "group": "fixed" },
+          { "label": "Utilities", "group": "fixed" },
+          { "label": "Groceries", "group": "food" }
+        ]
+      }
+    },
+    { "type": "divider", "payload": { "style": "rule" } },
+    { "type": "formula", "payload": { "label": "Total out", "expression": "sum(subtotal)" } },
+    { "type": "formula", "payload": { "label": "Paid so far", "expression": "sum(checkedSubtotal)" } },
+    { "type": "formula", "payload": { "label": "Left over", "expression": "sum(metric(\"monthly-income\")) - sum(subtotal)" } },
+    { "type": "heading", "payload": { "level": 3, "text": "Notes" } },
+    { "type": "text", "payload": { "plain": "" } }
+  ]
+}

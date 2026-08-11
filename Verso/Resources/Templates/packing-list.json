@@ -1,0 +1,33 @@
+{
+  "kind": "template",
+  "id": "packing-list",
+  "name": "Packing List",
+  "summary": "Grouped by bag, with a countdown to the door.",
+  "systemImage": "suitcase",
+  "category": "shopping",
+  "titleFormat": "Packing — {date}",
+  "blocks": [
+    { "type": "schedule", "payload": { "label": "Leave for the airport", "alarms": [{ "offset": -3600 }, { "offset": -86400 }] } },
+    {
+      "type": "checklist",
+      "payload": {
+        "groupBy": "group",
+        "itemFields": ["quantity", "note"],
+        "groups": [
+          { "id": "wear", "label": "Wearing", "position": 0 },
+          { "id": "carry", "label": "Hand luggage", "position": 1 },
+          { "id": "hold", "label": "Hold bag", "position": 2 },
+          { "id": "wash", "label": "Wash bag", "position": 3 },
+          { "id": "tech", "label": "Tech", "position": 4 },
+          { "id": "docs", "label": "Documents", "position": 5 }
+        ],
+        "items": [
+          { "label": "Passport", "group": "docs" },
+          { "label": "Charger", "group": "tech" },
+          { "label": "Toothbrush", "group": "wash" }
+        ]
+      }
+    },
+    { "type": "formula", "payload": { "label": "Left to pack", "expression": "uncheckedCount" } }
+  ]
+}

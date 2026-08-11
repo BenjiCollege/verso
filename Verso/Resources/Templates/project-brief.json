@@ -1,0 +1,38 @@
+{
+  "kind": "template",
+  "id": "project-brief",
+  "name": "Project Brief",
+  "summary": "What we're doing, why, and how we'll know it worked.",
+  "systemImage": "doc.badge.gearshape",
+  "category": "work",
+  "titleFormat": "Brief — ",
+  "blocks": [
+    { "type": "heading", "payload": { "level": 1, "text": "Project" } },
+    { "type": "heading", "payload": { "level": 3, "text": "The problem" } },
+    { "type": "text", "payload": { "plain": "" } },
+    { "type": "heading", "payload": { "level": 3, "text": "Who it's for" } },
+    { "type": "text", "payload": { "plain": "" } },
+    { "type": "heading", "payload": { "level": 3, "text": "What success looks like" } },
+    { "type": "list", "payload": { "style": "numbered", "items": [{ "text": "" }] } },
+    { "type": "heading", "payload": { "level": 3, "text": "Explicitly out of scope" } },
+    { "type": "list", "payload": { "style": "bullet", "items": [{ "text": "" }] } },
+    { "type": "divider", "payload": { "style": "rule" } },
+    { "type": "heading", "payload": { "level": 2, "text": "Milestones" } },
+    {
+      "type": "table",
+      "payload": {
+        "caption": "Milestones",
+        "columns": [
+          { "title": "Milestone", "kind": "text" },
+          { "title": "Owner", "kind": "text" },
+          { "title": "Due", "kind": "date" },
+          { "title": "Done", "kind": "checkbox" }
+        ],
+        "rows": [{ "cells": [{}, {}, {}, {}] }, { "cells": [{}, {}, {}, {}] }, { "cells": [{}, {}, {}, {}] }]
+      }
+    },
+    { "type": "progress", "payload": { "label": "Milestones complete", "current": 0, "target": 3, "style": "bar" } },
+    { "type": "heading", "payload": { "level": 2, "text": "Risks" } },
+    { "type": "list", "payload": { "style": "bullet", "items": [{ "text": "" }] } }
+  ]
+}

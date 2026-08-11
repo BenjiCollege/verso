@@ -98,8 +98,22 @@ struct TableBlockView: View {
             Rectangle().fill(theme.rule.opacity(0.5)).frame(height: Layout.hairline)
         }
         .contextMenu {
+            // Section 7's one-tap repeat set. Generic: duplicating a row copies
+            // its values, which is what "same again" means for any table.
+            Button {
+                duplicateRow(at: rowIndex, payload: payload)
+            } label: {
+                Label("Repeat Row", systemImage: "plus.square.on.square")
+            }
             Button("Delete Row", role: .destructive) {
                 removeRow(at: rowIndex, payload: payload)
+            }
+        }
+        .swipeActions(edge: .leading) {
+            Button {
+                duplicateRow(at: rowIndex, payload: payload)
+            } label: {
+                Label("Repeat", systemImage: "plus.square.on.square")
             }
         }
     }
@@ -189,6 +203,23 @@ struct TableBlockView: View {
         .versoText(.metadata)
         .foregroundStyle(theme.inkSecondary)
         .frame(minHeight: Layout.minimumHitTarget)
+    }
+
+    /// Copies a row's values into a new one directly beneath it, clearing any
+    /// checkboxes — repeating a set means doing it again, not having done it.
+    private func duplicateRow(at index: Int, payload: Binding<TablePayload>) {
+        guard payload.wrappedValue.rows.indices.contains(index) else { return }
+        let source = payload.wrappedValue.rows[index]
+
+        let copy = TablePayload.Row(cells: zip(source.cells, payload.wrappedValue.columns).map { cell, column in
+            var cell = cell
+            if column.kind == .checkbox { cell.checked = false }
+            return cell
+        })
+
+        motion.run(.settle) {
+            payload.wrappedValue.rows.insert(copy, at: index + 1)
+        }
     }
 
     private func removeRow(at index: Int, payload: Binding<TablePayload>) {

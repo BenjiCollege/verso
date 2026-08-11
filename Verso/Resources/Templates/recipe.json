@@ -1,0 +1,35 @@
+{
+  "kind": "template",
+  "id": "recipe",
+  "name": "Recipe",
+  "summary": "Ingredients you can tick off while cooking, and timers where they're needed.",
+  "systemImage": "frying.pan",
+  "category": "life",
+  "titleFormat": "",
+  "blocks": [
+    { "type": "heading", "payload": { "level": 1, "text": "" } },
+    { "type": "metric", "payload": { "label": "Serves", "seriesID": "recipe-serves", "unit": "" } },
+    { "type": "divider", "payload": { "style": "rule" } },
+    { "type": "heading", "payload": { "level": 2, "text": "Ingredients" } },
+    {
+      "type": "checklist",
+      "payload": {
+        "groupBy": "group",
+        "itemFields": ["quantity", "unit", "note"],
+        "groups": [
+          { "id": "main", "label": "Main", "position": 0 },
+          { "id": "sauce", "label": "Sauce", "position": 1 },
+          { "id": "garnish", "label": "To finish", "position": 2 }
+        ],
+        "items": []
+      }
+    },
+    { "type": "divider", "payload": { "style": "rule" } },
+    { "type": "heading", "payload": { "level": 2, "text": "Method" } },
+    { "type": "list", "payload": { "style": "numbered", "items": [{ "text": "" }] } },
+    { "type": "timer", "payload": { "label": "Cooking", "duration": 900, "autoStart": false, "sound": "bell" } },
+    { "type": "rating", "payload": { "label": "Worth making again", "scale": 5, "symbol": "star" } },
+    { "type": "heading", "payload": { "level": 3, "text": "Next time" } },
+    { "type": "text", "payload": { "plain": "" } }
+  ]
+}

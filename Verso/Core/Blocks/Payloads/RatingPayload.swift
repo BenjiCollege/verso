@@ -75,4 +75,10 @@ struct RatingPayload: BlockPayload {
     }
 
     var plainTextRepresentation: String { label }
+
+    func resetForTemplate() -> RatingPayload {
+        var copy = self
+        copy.value = nil
+        return copy
+    }
 }

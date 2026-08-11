@@ -1,0 +1,28 @@
+{
+  "kind": "template",
+  "id": "gift-list",
+  "name": "Gift List",
+  "summary": "Who, what, how much, and whether it's wrapped.",
+  "systemImage": "gift",
+  "category": "shopping",
+  "titleFormat": "Gifts — {date}",
+  "blocks": [
+    {
+      "type": "table",
+      "payload": {
+        "caption": "Gifts",
+        "columns": [
+          { "title": "For", "kind": "text" },
+          { "title": "Idea", "kind": "text" },
+          { "title": "Budget", "kind": "number" },
+          { "title": "Bought", "kind": "checkbox" },
+          { "title": "Wrapped", "kind": "checkbox" }
+        ],
+        "rows": [{ "cells": [{}, {}, {}, {}, {}] }, { "cells": [{}, {}, {}, {}, {}] }, { "cells": [{}, {}, {}, {}, {}] }]
+      }
+    },
+    { "type": "formula", "payload": { "label": "Total budget", "expression": "sum(column(\"Budget\"))" } },
+    { "type": "formula", "payload": { "label": "Bought", "expression": "sum(column(\"Bought\"))" } },
+    { "type": "text", "payload": { "plain": "" } }
+  ]
+}

@@ -25,6 +25,13 @@ struct BlockRegistry: Sendable {
 
         /// Plain-text projection without the caller needing the concrete type.
         let plainText: @Sendable (Data) throws -> String
+
+        /// Stored bytes back to inline JSON, for writing a template file.
+        /// The inverse of `transcode`.
+        let toJSON: @Sendable (Data) throws -> JSONValue
+
+        /// Stored bytes, blanked of personal data, as inline JSON.
+        let toTemplateJSON: @Sendable (Data) throws -> JSONValue
     }
 
     private let entries: [BlockType: Entry]
@@ -44,7 +51,14 @@ struct BlockRegistry: Sendable {
                 let payload = try json.decode(as: P.self, using: BlockCoding.makeDecoder())
                 return try BlockCoding.encode(payload)
             },
-            plainText: { data in try BlockCoding.decode(P.self, from: data).plainTextRepresentation }
+            plainText: { data in try BlockCoding.decode(P.self, from: data).plainTextRepresentation },
+            toJSON: { data in
+                try BlockCoding.makeDecoder().decode(JSONValue.self, from: data)
+            },
+            toTemplateJSON: { data in
+                let reset = try BlockCoding.decode(P.self, from: data).resetForTemplate()
+                return try BlockCoding.makeDecoder().decode(JSONValue.self, from: BlockCoding.encode(reset))
+            }
         )
     }
 
@@ -106,6 +120,14 @@ struct BlockRegistry: Sendable {
 
     func plainText(_ data: Data, as type: BlockType) throws -> String {
         try entry(for: type).plainText(data)
+    }
+
+    func json(_ data: Data, as type: BlockType) throws -> JSONValue {
+        try entry(for: type).toJSON(data)
+    }
+
+    func templateJSON(_ data: Data, as type: BlockType) throws -> JSONValue {
+        try entry(for: type).toTemplateJSON(data)
     }
 
     /// Best-effort plain text for a stored block. Returns "" for anything this

@@ -1,0 +1,49 @@
+{
+  "kind": "template",
+  "id": "meal-plan",
+  "name": "Meal Plan",
+  "summary": "A week of meals, and the shopping list that follows from it.",
+  "systemImage": "fork.knife",
+  "category": "shopping",
+  "titleFormat": "Meals — week of {date}",
+  "blocks": [
+    { "type": "heading", "payload": { "level": 2, "text": "The week" } },
+    {
+      "type": "table",
+      "payload": {
+        "caption": "Dinners",
+        "columns": [
+          { "title": "Day", "kind": "text" },
+          { "title": "Meal", "kind": "text" },
+          { "title": "Cooked", "kind": "checkbox" }
+        ],
+        "rows": [
+          { "cells": [{ "text": "Monday" }, {}, {}] },
+          { "cells": [{ "text": "Tuesday" }, {}, {}] },
+          { "cells": [{ "text": "Wednesday" }, {}, {}] },
+          { "cells": [{ "text": "Thursday" }, {}, {}] },
+          { "cells": [{ "text": "Friday" }, {}, {}] },
+          { "cells": [{ "text": "Saturday" }, {}, {}] },
+          { "cells": [{ "text": "Sunday" }, {}, {}] }
+        ]
+      }
+    },
+    { "type": "divider", "payload": { "style": "dots" } },
+    { "type": "heading", "payload": { "level": 2, "text": "What to buy" } },
+    {
+      "type": "checklist",
+      "payload": {
+        "groupBy": "group",
+        "itemFields": ["quantity", "unit", "price"],
+        "groups": [
+          { "id": "produce", "label": "Produce", "position": 0 },
+          { "id": "protein", "label": "Protein", "position": 1 },
+          { "id": "pantry", "label": "Pantry", "position": 2 },
+          { "id": "dairy", "label": "Dairy", "position": 3 }
+        ],
+        "items": []
+      }
+    },
+    { "type": "formula", "payload": { "label": "Estimated shop", "expression": "sum(subtotal)" } }
+  ]
+}

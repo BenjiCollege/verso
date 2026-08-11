@@ -41,7 +41,7 @@ struct LibraryView: View {
             .navigationTitle("Verso")
             .toolbar { toolbarContent }
             .sheet(isPresented: $isChoosingTemplate) {
-                NewNoteSheet(onSelect: createNote)
+                TemplateGalleryView(onSelect: createNote)
             }
             .sheet(isPresented: $isShowingSettings) {
                 SettingsView()

@@ -1,0 +1,38 @@
+{
+  "kind": "template",
+  "id": "habit-tracker",
+  "name": "Habit Tracker",
+  "summary": "A week of small things, marked off.",
+  "systemImage": "checkmark.seal",
+  "category": "life",
+  "stockID": "graph",
+  "titleFormat": "Habits — week of {date}",
+  "blocks": [
+    {
+      "type": "table",
+      "payload": {
+        "caption": "This week",
+        "columns": [
+          { "title": "Habit", "kind": "text" },
+          { "title": "Mon", "kind": "checkbox" },
+          { "title": "Tue", "kind": "checkbox" },
+          { "title": "Wed", "kind": "checkbox" },
+          { "title": "Thu", "kind": "checkbox" },
+          { "title": "Fri", "kind": "checkbox" },
+          { "title": "Sat", "kind": "checkbox" },
+          { "title": "Sun", "kind": "checkbox" }
+        ],
+        "rows": [
+          { "cells": [{}, {}, {}, {}, {}, {}, {}, {}] },
+          { "cells": [{}, {}, {}, {}, {}, {}, {}, {}] },
+          { "cells": [{}, {}, {}, {}, {}, {}, {}, {}] },
+          { "cells": [{}, {}, {}, {}, {}, {}, {}, {}] }
+        ]
+      }
+    },
+    { "type": "formula", "payload": { "label": "Marks this week", "expression": "sum(column(\"Mon\")) + sum(column(\"Tue\")) + sum(column(\"Wed\")) + sum(column(\"Thu\")) + sum(column(\"Fri\")) + sum(column(\"Sat\")) + sum(column(\"Sun\"))" } },
+    { "type": "progress", "payload": { "label": "Toward the week's target", "current": 0, "target": 20, "style": "bar" } },
+    { "type": "schedule", "payload": { "label": "Mark the tracker", "recurrence": { "frequency": "daily" }, "alarms": [{ "offset": 0 }] } },
+    { "type": "text", "payload": { "plain": "" } }
+  ]
+}

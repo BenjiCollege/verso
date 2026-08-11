@@ -123,6 +123,14 @@ struct TablePayload: BlockPayload {
         return ([caption, header] + body).filter { !$0.isEmpty }.joined(separator: "\n")
     }
 
+    /// The columns are the form; the rows are what somebody filled in. Row
+    /// count is kept so the shape of the table survives.
+    func resetForTemplate() -> TablePayload {
+        var copy = self
+        copy.rows = rows.map { TablePayload.Row(cells: Array(repeating: Cell(), count: columns.count)) }
+        return copy
+    }
+
     /// Pads or trims every row so its cell count matches the column count.
     /// A template that ships ragged rows, or a column added on another device,
     /// both land here rather than in an index-out-of-range.

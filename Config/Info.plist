@@ -28,6 +28,41 @@
 	<string>Verso uses your location to find the nearest matches for place reminders like “any grocery store”, so a list can remind you when you get there.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Verso watches the places you attach to your lists so it can remind you when you arrive, even when Verso isn't open. Your location is used only on this device and is never sent anywhere.</string>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.verso.notes.template</string>
+			<key>UTTypeDescription</key>
+			<string>Verso Template</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.json</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>versotemplate</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Verso Template</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.verso.notes.template</string>
+			</array>
+		</dict>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

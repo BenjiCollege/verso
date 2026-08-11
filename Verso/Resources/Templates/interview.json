@@ -1,0 +1,25 @@
+{
+  "kind": "template",
+  "id": "interview",
+  "name": "Interview",
+  "summary": "Questions, evidence, and a rating per area — filled in during, not after.",
+  "systemImage": "person.crop.rectangle",
+  "category": "work",
+  "titleFormat": "Interview — {date}",
+  "blocks": [
+    { "type": "heading", "payload": { "level": 1, "text": "Candidate" } },
+    { "type": "heading", "payload": { "level": 3, "text": "Questions to cover" } },
+    { "type": "checklist", "payload": { "groupBy": "none", "itemFields": ["note"], "items": [{ "label": "" }] } },
+    { "type": "divider", "payload": { "style": "rule" } },
+    { "type": "heading", "payload": { "level": 2, "text": "Evidence" } },
+    { "type": "text", "payload": { "plain": "" } },
+    { "type": "divider", "payload": { "style": "rule" } },
+    { "type": "heading", "payload": { "level": 2, "text": "Assessment" } },
+    { "type": "rating", "payload": { "label": "Craft", "scale": 5, "symbol": "circle" } },
+    { "type": "rating", "payload": { "label": "Judgement", "scale": 5, "symbol": "circle" } },
+    { "type": "rating", "payload": { "label": "Communication", "scale": 5, "symbol": "circle" } },
+    { "type": "formula", "payload": { "label": "Average", "expression": "avg(rating)" } },
+    { "type": "heading", "payload": { "level": 3, "text": "Recommendation" } },
+    { "type": "text", "payload": { "plain": "" } }
+  ]
+}

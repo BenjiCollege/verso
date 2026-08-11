@@ -1,0 +1,21 @@
+{
+  "kind": "template",
+  "id": "reading-log",
+  "name": "Reading Log",
+  "summary": "What you're reading, how far in, and what you thought.",
+  "systemImage": "books.vertical",
+  "category": "life",
+  "stockID": "ruled",
+  "titleFormat": "Reading — {date}",
+  "blocks": [
+    { "type": "heading", "payload": { "level": 1, "text": "" } },
+    { "type": "progress", "payload": { "label": "Pages read", "current": 0, "target": 300, "style": "bar" } },
+    { "type": "rating", "payload": { "label": "Rating", "scale": 5, "symbol": "star" } },
+    { "type": "metric", "payload": { "label": "Books finished this year", "seriesID": "books-finished", "unit": "books", "showsPreviousEntry": true } },
+    { "type": "divider", "payload": { "style": "dots" } },
+    { "type": "heading", "payload": { "level": 3, "text": "Passages worth keeping" } },
+    { "type": "text", "payload": { "plain": "" } },
+    { "type": "heading", "payload": { "level": 3, "text": "What I took from it" } },
+    { "type": "text", "payload": { "plain": "" } }
+  ]
+}

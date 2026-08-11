@@ -1,0 +1,22 @@
+{
+  "kind": "template",
+  "id": "retro",
+  "name": "Retro",
+  "summary": "What went well, what didn't, and what actually changes.",
+  "systemImage": "arrow.triangle.2.circlepath",
+  "category": "work",
+  "titleFormat": "Retro — {date}",
+  "blocks": [
+    { "type": "heading", "payload": { "level": 2, "text": "Went well" } },
+    { "type": "list", "payload": { "style": "bullet", "items": [{ "text": "" }] } },
+    { "type": "heading", "payload": { "level": 2, "text": "Didn't" } },
+    { "type": "list", "payload": { "style": "bullet", "items": [{ "text": "" }] } },
+    { "type": "heading", "payload": { "level": 2, "text": "Puzzles" } },
+    { "type": "list", "payload": { "style": "bullet", "items": [{ "text": "" }] } },
+    { "type": "divider", "payload": { "style": "rule" } },
+    { "type": "heading", "payload": { "level": 2, "text": "Changes we're making" } },
+    { "type": "checklist", "payload": { "groupBy": "checked", "itemFields": ["note", "schedule"], "items": [] } },
+    { "type": "rating", "payload": { "label": "Team mood", "scale": 5, "symbol": "heart" } },
+    { "type": "text", "payload": { "plain": "A retro with no actions is a meeting." } }
+  ]
+}

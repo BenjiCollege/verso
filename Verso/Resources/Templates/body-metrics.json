@@ -1,0 +1,21 @@
+{
+  "kind": "template",
+  "id": "body-metrics",
+  "name": "Body Metrics",
+  "summary": "Measurements taken the same way each time, charted over months.",
+  "systemImage": "figure",
+  "category": "fitness",
+  "titleFormat": "Measurements — {date}",
+  "blocks": [
+    { "type": "metric", "payload": { "label": "Bodyweight", "seriesID": "bodyweight", "unit": "kg", "catalogID": "exercises", "showsPreviousEntry": true } },
+    { "type": "metric", "payload": { "label": "Waist", "seriesID": "waist", "unit": "cm", "showsPreviousEntry": true } },
+    { "type": "metric", "payload": { "label": "Chest", "seriesID": "chest-measurement", "unit": "cm", "showsPreviousEntry": true } },
+    { "type": "metric", "payload": { "label": "Hips", "seriesID": "hips", "unit": "cm", "showsPreviousEntry": true } },
+    { "type": "metric", "payload": { "label": "Thigh", "seriesID": "thigh", "unit": "cm", "showsPreviousEntry": true } },
+    { "type": "metric", "payload": { "label": "Arm", "seriesID": "arm", "unit": "cm", "showsPreviousEntry": true } },
+    { "type": "metric", "payload": { "label": "Resting heart rate", "seriesID": "resting-heart-rate", "unit": "bpm", "showsPreviousEntry": true } },
+    { "type": "divider", "payload": { "style": "dots" } },
+    { "type": "text", "payload": { "plain": "Measure at the same time of day, in the same conditions. The trend is the only part that means anything." } },
+    { "type": "schedule", "payload": { "label": "Take measurements", "recurrence": { "frequency": "weekly" }, "alarms": [{ "offset": 0 }] } }
+  ]
+}

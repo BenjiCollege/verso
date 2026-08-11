@@ -231,6 +231,20 @@ struct ChecklistPayload: BlockPayload {
     var plainTextRepresentation: String {
         items.map(\.label).filter { !$0.isEmpty }.joined(separator: "\n")
     }
+
+    /// Keeps the groups, the fields and the items; drops the ticks and the
+    /// prices. What made the list is structure; what you paid is not.
+    func resetForTemplate() -> ChecklistPayload {
+        var copy = self
+        copy.items = items.map { item in
+            var item = item
+            item.checked = false
+            item.checkedAt = nil
+            item.price = nil
+            return item
+        }
+        return copy
+    }
 }
 
 // MARK: - Sectioning

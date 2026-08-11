@@ -2,12 +2,16 @@
   "kind": "template",
   "id": "grocery-run",
   "name": "Grocery Run",
-  "summary": "Aisle-grouped list with quantities and prices.",
+  "summary": "Aisle-grouped list with a running total and a store reminder.",
   "systemImage": "cart",
   "category": "shopping",
   "stockID": "ruled",
   "titleFormat": "Grocery Run — {date}",
   "blocks": [
+    {
+      "type": "place",
+      "payload": { "name": "Any grocery store", "poiCategory": "MKPOICategoryFoodMarket", "radius": 200, "trigger": "arrive" }
+    },
     {
       "type": "checklist",
       "payload": {
@@ -25,13 +29,9 @@
         "items": []
       }
     },
-    {
-      "type": "divider",
-      "payload": { "style": "dots" }
-    },
-    {
-      "type": "text",
-      "payload": { "plain": "" }
-    }
+    { "type": "divider", "payload": { "style": "rule" } },
+    { "type": "formula", "payload": { "label": "Basket total", "expression": "sum(subtotal)" } },
+    { "type": "formula", "payload": { "label": "In the trolley", "expression": "sum(checkedSubtotal)" } },
+    { "type": "formula", "payload": { "label": "Still to find", "expression": "uncheckedCount" } }
   ]
 }

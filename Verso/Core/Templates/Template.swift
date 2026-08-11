@@ -38,9 +38,32 @@ struct Template: Identifiable, Hashable, Sendable, Codable {
 
     var blocks: [BlockSpec]
 
+    /// Set for templates the user made, so the gallery can offer to rename or
+    /// delete them and the bundled ones stay read-only.
+    var isUserAuthored: Bool = false
+
     private enum CodingKeys: String, CodingKey {
+        case kind
         case id, name, summary, systemImage, category
         case themeID, stockID, revealStyleID, titleFormat, blocks
+    }
+
+    /// Written explicitly so an exported template is indistinguishable from a
+    /// bundled one — the `kind` discriminator is what the loader routes on, and
+    /// a file without it would import as nothing.
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode("template", forKey: .kind)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encodeIfPresent(summary, forKey: .summary)
+        try container.encode(systemImage, forKey: .systemImage)
+        try container.encodeIfPresent(category, forKey: .category)
+        try container.encodeIfPresent(themeID, forKey: .themeID)
+        try container.encodeIfPresent(stockID, forKey: .stockID)
+        try container.encodeIfPresent(revealStyleID, forKey: .revealStyleID)
+        try container.encodeIfPresent(titleFormat, forKey: .titleFormat)
+        try container.encode(blocks, forKey: .blocks)
     }
 
     init(from decoder: any Decoder) throws {

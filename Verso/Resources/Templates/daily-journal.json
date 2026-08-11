@@ -1,0 +1,22 @@
+{
+  "kind": "template",
+  "id": "daily-journal",
+  "name": "Daily Journal",
+  "summary": "A page a day, with mood and sleep charted quietly underneath.",
+  "systemImage": "book.closed",
+  "category": "life",
+  "stockID": "manuscript",
+  "revealStyleID": "fadeUp",
+  "titleFormat": "{weekday} — {date}",
+  "blocks": [
+    { "type": "rating", "payload": { "label": "Mood", "scale": 5, "symbol": "circle" } },
+    { "type": "metric", "payload": { "label": "Sleep", "seriesID": "sleep-duration", "unit": "h", "target": 8, "showsPreviousEntry": true } },
+    { "type": "divider", "payload": { "style": "dots" } },
+    { "type": "text", "payload": { "plain": "" } },
+    { "type": "divider", "payload": { "style": "dots" } },
+    { "type": "heading", "payload": { "level": 3, "text": "Three good things" } },
+    { "type": "list", "payload": { "style": "numbered", "items": [{ "text": "" }, { "text": "" }, { "text": "" }] } },
+    { "type": "heading", "payload": { "level": 3, "text": "Tomorrow" } },
+    { "type": "checklist", "payload": { "groupBy": "none", "itemFields": [], "items": [{ "label": "" }] } }
+  ]
+}

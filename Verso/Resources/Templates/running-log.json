@@ -1,0 +1,19 @@
+{
+  "kind": "template",
+  "id": "running-log",
+  "name": "Running Log",
+  "summary": "Distance, time and how it felt — charted over months.",
+  "systemImage": "figure.run",
+  "category": "fitness",
+  "titleFormat": "Run — {date}",
+  "blocks": [
+    { "type": "metric", "payload": { "label": "Distance", "seriesID": "run-distance", "unit": "km", "showsPreviousEntry": true } },
+    { "type": "metric", "payload": { "label": "Duration", "seriesID": "run-duration", "unit": "min", "showsPreviousEntry": true } },
+    { "type": "metric", "payload": { "label": "Average heart rate", "seriesID": "run-heart-rate", "unit": "bpm" } },
+    { "type": "formula", "payload": { "label": "Pace (min/km)", "expression": "sum(metric(\"run-duration\")) / max(sum(metric(\"run-distance\")), 0.001)" } },
+    { "type": "rating", "payload": { "label": "Effort", "scale": 10, "symbol": "circle" } },
+    { "type": "divider", "payload": { "style": "dots" } },
+    { "type": "heading", "payload": { "level": 3, "text": "Notes" } },
+    { "type": "text", "payload": { "plain": "" } }
+  ]
+}

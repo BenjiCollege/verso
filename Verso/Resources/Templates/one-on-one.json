@@ -1,0 +1,22 @@
+{
+  "kind": "template",
+  "id": "one-on-one",
+  "name": "1:1",
+  "summary": "Their agenda first, then yours, then what carries over.",
+  "systemImage": "person.2",
+  "category": "work",
+  "titleFormat": "1:1 — {date}",
+  "blocks": [
+    { "type": "heading", "payload": { "level": 2, "text": "Their agenda" } },
+    { "type": "list", "payload": { "style": "bullet", "items": [{ "text": "" }] } },
+    { "type": "heading", "payload": { "level": 2, "text": "My agenda" } },
+    { "type": "list", "payload": { "style": "bullet", "items": [{ "text": "" }] } },
+    { "type": "divider", "payload": { "style": "rule" } },
+    { "type": "heading", "payload": { "level": 2, "text": "Notes" } },
+    { "type": "text", "payload": { "plain": "" } },
+    { "type": "heading", "payload": { "level": 2, "text": "Carrying over" } },
+    { "type": "checklist", "payload": { "groupBy": "checked", "itemFields": ["note"], "items": [] } },
+    { "type": "rating", "payload": { "label": "How are they doing", "scale": 5, "symbol": "circle" } },
+    { "type": "schedule", "payload": { "label": "Next 1:1", "recurrence": { "frequency": "weekly" }, "alarms": [{ "offset": -900 }] } }
+  ]
+}

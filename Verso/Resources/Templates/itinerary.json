@@ -1,0 +1,35 @@
+{
+  "kind": "template",
+  "id": "itinerary",
+  "name": "Itinerary",
+  "summary": "Days, bookings, and things worth walking to.",
+  "systemImage": "airplane",
+  "category": "life",
+  "titleFormat": "Trip — {date}",
+  "blocks": [
+    { "type": "heading", "payload": { "level": 1, "text": "" } },
+    { "type": "schedule", "payload": { "label": "Departure", "alarms": [{ "offset": -86400 }, { "offset": -7200 }] } },
+    { "type": "divider", "payload": { "style": "rule" } },
+    { "type": "heading", "payload": { "level": 2, "text": "Bookings" } },
+    {
+      "type": "table",
+      "payload": {
+        "caption": "Bookings",
+        "columns": [
+          { "title": "What", "kind": "text" },
+          { "title": "When", "kind": "date" },
+          { "title": "Reference", "kind": "text" },
+          { "title": "Cost", "kind": "number" },
+          { "title": "Confirmed", "kind": "checkbox" }
+        ],
+        "rows": [{ "cells": [{}, {}, {}, {}, {}] }, { "cells": [{}, {}, {}, {}, {}] }, { "cells": [{}, {}, {}, {}, {}] }]
+      }
+    },
+    { "type": "formula", "payload": { "label": "Booked so far", "expression": "sum(column(\"Cost\"))" } },
+    { "type": "divider", "payload": { "style": "rule" } },
+    { "type": "heading", "payload": { "level": 2, "text": "Worth seeing" } },
+    { "type": "checklist", "payload": { "groupBy": "group", "itemFields": ["note", "place"], "groups": [{ "id": "d1", "label": "Day one", "position": 0 }, { "id": "d2", "label": "Day two", "position": 1 }, { "id": "d3", "label": "Day three", "position": 2 }], "items": [] } },
+    { "type": "heading", "payload": { "level": 2, "text": "Notes" } },
+    { "type": "text", "payload": { "plain": "" } }
+  ]
+}

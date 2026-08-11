@@ -15,6 +15,7 @@ struct VersoApp: App {
     /// Running timers are app state, not note state: a rest timer counting down
     /// on your phone must not start counting on your iPad.
     @State private var timers = RestTimerService()
+    @State private var userTemplates = UserTemplateStore()
     @State private var schedule: ScheduleService
     @State private var geofences: GeofenceService
 
@@ -36,6 +37,7 @@ struct VersoApp: App {
                 .environment(appearance)
                 .environment(linkIndex)
                 .environment(timers)
+                .environment(userTemplates)
                 .environment(schedule)
                 .environment(geofences)
                 .environment(geofences.authority)

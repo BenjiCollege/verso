@@ -1,0 +1,36 @@
+{
+  "kind": "template",
+  "id": "mobility",
+  "name": "Mobility",
+  "summary": "A short routine with a timer on each hold.",
+  "systemImage": "figure.flexibility",
+  "category": "fitness",
+  "titleFormat": "Mobility — {date}",
+  "blocks": [
+    { "type": "heading", "payload": { "level": 2, "text": "Routine" } },
+    {
+      "type": "checklist",
+      "payload": {
+        "groupBy": "group",
+        "itemFields": ["quantity", "unit", "note"],
+        "groups": [
+          { "id": "hips", "label": "Hips", "position": 0 },
+          { "id": "shoulders", "label": "Shoulders", "position": 1 },
+          { "id": "spine", "label": "Spine", "position": 2 },
+          { "id": "ankles", "label": "Ankles", "position": 3 }
+        ],
+        "items": [
+          { "label": "Couch stretch", "group": "hips", "quantity": 90, "unit": "s" },
+          { "label": "90/90 hip switch", "group": "hips", "quantity": 10, "unit": "reps" },
+          { "label": "Wall slide", "group": "shoulders", "quantity": 10, "unit": "reps" },
+          { "label": "Thoracic extension", "group": "spine", "quantity": 60, "unit": "s" },
+          { "label": "Ankle dorsiflexion", "group": "ankles", "quantity": 60, "unit": "s" }
+        ]
+      }
+    },
+    { "type": "timer", "payload": { "label": "Hold", "duration": 60, "autoStart": false, "sound": "bell" } },
+    { "type": "formula", "payload": { "label": "Done", "expression": "checkedCount" } },
+    { "type": "rating", "payload": { "label": "Stiffness before", "scale": 5, "symbol": "circle" } },
+    { "type": "text", "payload": { "plain": "" } }
+  ]
+}

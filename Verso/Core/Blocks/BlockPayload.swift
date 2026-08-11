@@ -14,10 +14,20 @@ protocol BlockPayload: Codable, Sendable, Equatable {
     /// Plain-text projection, used for list previews, note titling and — later —
     /// Spotlight and semantic indexing. Blocks with no text return "".
     var plainTextRepresentation: String { get }
+
+    /// The payload as it should appear when this note is saved as a template:
+    /// structure kept, one person's data dropped. A checklist keeps its groups
+    /// and loses its ticks; a metric keeps its series and loses its reading.
+    ///
+    /// The default keeps everything, which is right for headings, dividers and
+    /// anything else that is already structure.
+    func resetForTemplate() -> Self
 }
 
 extension BlockPayload {
     var plainTextRepresentation: String { "" }
+
+    func resetForTemplate() -> Self { self }
 }
 
 enum BlockRegistryError: LocalizedError, Equatable {

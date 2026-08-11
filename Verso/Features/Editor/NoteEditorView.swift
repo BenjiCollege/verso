@@ -24,6 +24,7 @@ struct NoteEditorView: View {
     @State private var scrollPosition = ScrollPosition()
     @State private var scrollGeometry: ScrollGeometry?
     @State private var isReordering = false
+    @State private var isSavingTemplate = false
     @State private var isFocusMode = false
     @State private var isCaretSuppressed = false
 
@@ -54,6 +55,9 @@ struct NoteEditorView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) { keyboardAccessories }
         .sheet(isPresented: $isReordering) {
             BlockReorderSheet(note: note)
+        }
+        .sheet(isPresented: $isSavingTemplate) {
+            SaveAsTemplateSheet(note: note)
         }
         .onChange(of: session.caretRectInPage) { _, caret in
             followCaret(to: caret)
@@ -179,6 +183,11 @@ struct NoteEditorView: View {
                     isReordering = true
                 } label: {
                     Label("Reorder Blocks", systemImage: "arrow.up.arrow.down")
+                }
+                Button {
+                    isSavingTemplate = true
+                } label: {
+                    Label("Save as Template", systemImage: "square.on.square")
                 }
             } label: {
                 Label("Page options", systemImage: "ellipsis.circle")

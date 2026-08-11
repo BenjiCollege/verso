@@ -46,6 +46,13 @@ struct ProgressPayload: BlockPayload {
 
     var plainTextRepresentation: String { label }
 
+    /// The target is the plan; the progress is one person's week.
+    func resetForTemplate() -> ProgressPayload {
+        var copy = self
+        copy.current = 0
+        return copy
+    }
+
     /// Clamped to 0...1. Overshooting a target is worth celebrating, not worth
     /// drawing a bar past the end of itself.
     var fraction: Double {

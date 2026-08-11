@@ -1,0 +1,88 @@
+{
+  "kind": "template",
+  "id": "strength-session",
+  "name": "Strength Session",
+  "summary": "Top sets with plate maths and last session's numbers, working sets in a table, volume load worked out for you.",
+  "systemImage": "figure.strengthtraining.traditional",
+  "category": "fitness",
+  "stockID": "graph",
+  "titleFormat": "{weekday} — {date}",
+  "blocks": [
+    { "type": "heading", "payload": { "level": 1, "text": "Session" } },
+    { "type": "rating", "payload": { "label": "How it felt", "scale": 5, "symbol": "bolt" } },
+
+    { "type": "divider", "payload": { "style": "rule" } },
+    { "type": "heading", "payload": { "level": 2, "text": "First lift" } },
+    {
+      "type": "metric",
+      "payload": {
+        "label": "Back Squat",
+        "seriesID": "back-squat",
+        "unit": "kg",
+        "catalogID": "exercises",
+        "showsPreviousEntry": true,
+        "restTimerSeconds": 180,
+        "decomposition": { "base": 20, "units": [25, 20, 15, 10, 5, 2.5, 1.25], "paired": true, "unit": "kg" }
+      }
+    },
+    {
+      "type": "table",
+      "payload": {
+        "caption": "Working sets",
+        "columns": [
+          { "title": "Weight", "kind": "number" },
+          { "title": "Reps", "kind": "number" },
+          { "title": "Done", "kind": "checkbox" }
+        ],
+        "rows": [{ "cells": [{}, {}, {}] }, { "cells": [{}, {}, {}] }, { "cells": [{}, {}, {}] }]
+      }
+    },
+    { "type": "formula", "payload": { "label": "Volume load", "expression": "sumproduct(column(\"Weight\"), column(\"Reps\"))" } },
+
+    { "type": "divider", "payload": { "style": "rule" } },
+    { "type": "heading", "payload": { "level": 2, "text": "Second lift" } },
+    {
+      "type": "metric",
+      "payload": {
+        "label": "Bench Press",
+        "seriesID": "bench-press",
+        "unit": "kg",
+        "catalogID": "exercises",
+        "showsPreviousEntry": true,
+        "restTimerSeconds": 150,
+        "decomposition": { "base": 20, "units": [25, 20, 15, 10, 5, 2.5, 1.25], "paired": true, "unit": "kg" }
+      }
+    },
+    {
+      "type": "table",
+      "payload": {
+        "caption": "Working sets",
+        "columns": [
+          { "title": "Weight", "kind": "number" },
+          { "title": "Reps", "kind": "number" },
+          { "title": "Done", "kind": "checkbox" }
+        ],
+        "rows": [{ "cells": [{}, {}, {}] }, { "cells": [{}, {}, {}] }, { "cells": [{}, {}, {}] }]
+      }
+    },
+
+    { "type": "divider", "payload": { "style": "rule" } },
+    { "type": "heading", "payload": { "level": 2, "text": "Accessories" } },
+    {
+      "type": "table",
+      "payload": {
+        "caption": "Accessory work",
+        "columns": [
+          { "title": "Exercise", "kind": "text" },
+          { "title": "Weight", "kind": "number" },
+          { "title": "Reps", "kind": "number" },
+          { "title": "Sets", "kind": "number" }
+        ],
+        "rows": [{ "cells": [{}, {}, {}, {}] }, { "cells": [{}, {}, {}, {}] }, { "cells": [{}, {}, {}, {}] }]
+      }
+    },
+
+    { "type": "timer", "payload": { "label": "Rest", "duration": 180, "autoStart": false, "sound": "chime" } },
+    { "type": "text", "payload": { "plain": "" } }
+  ]
+}

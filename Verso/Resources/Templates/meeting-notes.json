@@ -1,0 +1,28 @@
+{
+  "kind": "template",
+  "id": "meeting-notes",
+  "name": "Meeting Notes",
+  "summary": "Attendees, decisions, and actions with owners.",
+  "systemImage": "person.3",
+  "category": "work",
+  "titleFormat": "Meeting — {date}",
+  "blocks": [
+    { "type": "heading", "payload": { "level": 1, "text": "Meeting" } },
+    { "type": "list", "payload": { "style": "bullet", "items": [{ "text": "" }] } },
+    { "type": "divider", "payload": { "style": "rule" } },
+    { "type": "heading", "payload": { "level": 2, "text": "Discussion" } },
+    { "type": "text", "payload": { "plain": "" } },
+    { "type": "heading", "payload": { "level": 2, "text": "Decisions" } },
+    { "type": "list", "payload": { "style": "numbered", "items": [{ "text": "" }] } },
+    { "type": "heading", "payload": { "level": 2, "text": "Actions" } },
+    {
+      "type": "checklist",
+      "payload": {
+        "groupBy": "none",
+        "itemFields": ["note", "schedule"],
+        "items": []
+      }
+    },
+    { "type": "formula", "payload": { "label": "Actions outstanding", "expression": "uncheckedCount" } }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "kind": "template",
+  "id": "standup",
+  "name": "Standup",
+  "summary": "Yesterday, today, blockers. Kept short on purpose.",
+  "systemImage": "sun.horizon",
+  "category": "work",
+  "titleFormat": "Standup — {date}",
+  "blocks": [
+    { "type": "heading", "payload": { "level": 3, "text": "Yesterday" } },
+    { "type": "list", "payload": { "style": "bullet", "items": [{ "text": "" }] } },
+    { "type": "heading", "payload": { "level": 3, "text": "Today" } },
+    { "type": "checklist", "payload": { "groupBy": "none", "itemFields": [], "items": [{ "label": "" }] } },
+    { "type": "heading", "payload": { "level": 3, "text": "Blocked on" } },
+    { "type": "list", "payload": { "style": "bullet", "items": [{ "text": "" }] } },
+    { "type": "schedule", "payload": { "label": "Standup", "recurrence": { "frequency": "weekly", "weekdays": [2, 3, 4, 5, 6] }, "alarms": [{ "offset": -300 }] } }
+  ]
+}

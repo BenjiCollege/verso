@@ -1,0 +1,33 @@
+{
+  "kind": "template",
+  "id": "household-restock",
+  "name": "Household Restock",
+  "summary": "The things you only notice when they run out.",
+  "systemImage": "house",
+  "category": "shopping",
+  "titleFormat": "Restock — {date}",
+  "blocks": [
+    {
+      "type": "checklist",
+      "payload": {
+        "groupBy": "group",
+        "itemFields": ["quantity", "price", "note"],
+        "groups": [
+          { "id": "kitchen", "label": "Kitchen", "position": 0 },
+          { "id": "bathroom", "label": "Bathroom", "position": 1 },
+          { "id": "laundry", "label": "Laundry", "position": 2 },
+          { "id": "general", "label": "General", "position": 3 }
+        ],
+        "items": [
+          { "label": "Washing-up liquid", "group": "kitchen" },
+          { "label": "Bin bags", "group": "kitchen" },
+          { "label": "Toilet roll", "group": "bathroom" },
+          { "label": "Laundry detergent", "group": "laundry" },
+          { "label": "Light bulbs", "group": "general" }
+        ]
+      }
+    },
+    { "type": "formula", "payload": { "label": "Total", "expression": "sum(subtotal)" } },
+    { "type": "schedule", "payload": { "label": "Check the cupboards", "recurrence": { "frequency": "monthly" }, "alarms": [{ "offset": 0 }] } }
+  ]
+}
