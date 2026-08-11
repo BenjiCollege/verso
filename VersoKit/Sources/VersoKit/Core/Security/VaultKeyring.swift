@@ -16,34 +16,37 @@ final class VaultKeyring: @unchecked Sendable {
 
     static let shared = VaultKeyring()
 
-    private let lock = NSLock()
+    /// Named `mutex` rather than `lock`, because `lock()` is also the method
+    /// that forgets the key — and `lock.lock()` inside `func lock()` is an
+    /// invalid redeclaration, not a clever pun.
+    private let mutex = NSLock()
     private var key: SymmetricKey?
 
     private init() {}
 
     var isUnlocked: Bool {
-        lock.lock()
-        defer { lock.unlock() }
+        mutex.lock()
+        defer { mutex.unlock() }
         return key != nil
     }
 
     func unlock(with key: SymmetricKey) {
-        lock.lock()
-        defer { lock.unlock() }
+        mutex.lock()
+        defer { mutex.unlock() }
         self.key = key
     }
 
     /// Forgets the key. The ciphertext stays exactly where it was.
     func lock() {
-        lock.lock()
-        defer { lock.unlock() }
+        mutex.lock()
+        defer { mutex.unlock() }
         key = nil
     }
 
     private func withKey<T>(_ body: (SymmetricKey) throws -> T) throws -> T {
-        lock.lock()
+        mutex.lock()
         let current = key
-        lock.unlock()
+        mutex.unlock()
 
         guard let current else { throw VaultError.noKey }
         return try body(current)

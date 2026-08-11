@@ -19,7 +19,10 @@ struct SearchHit: Identifiable, Hashable, Sendable {
 /// more widely than Apple Intelligence — so semantic search is not gated behind
 /// it. Where embeddings are unavailable for the user's language, lexical
 /// scoring carries the whole feature rather than half of it.
-struct SemanticIndex: Sendable {
+/// Not `Sendable`: it holds an `NLEmbedding`, which is not. It never needs to
+/// cross an isolation boundary — one is built where a search is run, and only
+/// `SearchHit` and `Entry` travel.
+struct SemanticIndex {
 
     static let logger = Logger(subsystem: "com.verso.notes", category: "search")
 

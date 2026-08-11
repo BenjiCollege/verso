@@ -102,7 +102,10 @@ struct MetricChart: View {
 /// Makes the chart readable with Audio Graphs rather than announcing itself as
 /// an image with no content.
 extension MetricChart: AXChartDescriptorRepresentable {
-    func makeChartDescriptor() -> AXChartDescriptor {
+    /// `nonisolated` because the protocol requirement is, and `View` otherwise
+    /// infers main-actor isolation for it. Safe: it reads only the `let`
+    /// properties, all of which are `Sendable`.
+    nonisolated func makeChartDescriptor() -> AXChartDescriptor {
         let values = points.map(\.value)
         let dates = points.map(\.date)
 

@@ -15,13 +15,17 @@ struct AudioStore {
 
     /// AAC, 32kbps, mono — section 7's format. Roughly a quarter of a megabyte
     /// a minute, which is what makes keeping the audio at all reasonable.
-    static let settings: [String: Any] = [
+    /// Computed rather than stored: `[String: Any]` is not `Sendable`, so a
+    /// static `let` of one is shared mutable state as far as Swift 6 is
+    /// concerned. Building it per call costs nothing — it is read once, when a
+    /// recording starts.
+    static var settings: [String: Any] {[
         AVFormatIDKey: kAudioFormatMPEG4AAC,
         AVSampleRateKey: 44_100.0,
         AVNumberOfChannelsKey: 1,
         AVEncoderBitRateKey: 32_000,
         AVEncoderAudioQualityKey: AVAudioQuality.medium.rawValue,
-    ]
+    ]}
 
     static let fileExtension = "m4a"
 
