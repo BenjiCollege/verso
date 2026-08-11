@@ -109,6 +109,11 @@ final class RichTextCoordinator: NSObject, UITextViewDelegate, RichTextCommandTa
         }
         lastAppliedRendering = key
 
+        // Re-rendering rebuilds the storage from the payload, so anything typed
+        // inside the commit window has to be banked first — otherwise a Dynamic
+        // Type change mid-sentence would swallow the last few characters.
+        commitPendingEdit()
+
         layoutDelegate.snapshot = PageRenderingSnapshot(
             rule: parent.stock.pattern == .horizontalRules || parent.stock.pattern == .grid
                 ? parent.theme.palette.rule
