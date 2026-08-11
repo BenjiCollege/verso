@@ -75,7 +75,10 @@ struct MetricSeriesTests {
 
     @Test("No readings, no points")
     func emptyAggregation() {
-        #expect(MetricAggregator.daily([], using: .sum, calendar: calendar).isEmpty)
+        // Spelled out because `daily` is overloaded on readings and on
+        // `MetricEntry`, and an empty literal matches both.
+        let none: [(date: Date, value: Double)] = []
+        #expect(MetricAggregator.daily(none, using: .sum, calendar: calendar).isEmpty)
     }
 
     /// A trend line drawn from fewer points than its own window is a line

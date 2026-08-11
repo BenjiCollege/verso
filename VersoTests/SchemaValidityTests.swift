@@ -3,6 +3,11 @@ import SwiftData
 import Testing
 @testable import VersoKit
 
+/// `Testing` exports a `Tag` of its own — the one you attach to a suite — so
+/// the bare name is ambiguous in any file that imports both. Everywhere below,
+/// the model is what is meant.
+private typealias Tag = VersoKit.Tag
+
 /// Guards the CloudKit rules in section 4. These are the constraints that fail
 /// at first sync rather than at compile time, which is exactly why they need a
 /// test.
