@@ -49,33 +49,65 @@ enum VersoModelContainer {
     /// three can reach. Declared in `Verso.entitlements`.
     static let appGroupIdentifier = "group.com.verso.notes"
 
+    /// Whether this process can actually reach the app group.
+    ///
+    /// Asked rather than assumed because SwiftData does not *throw* when a
+    /// configuration names a group container the process has no entitlement
+    /// for — it calls `fatalError` from inside `ModelContainer.init`, so none
+    /// of the fallbacks below ever get the chance to run. `containerURL(for…)`
+    /// returns nil in exactly that case and is the only survivable way to ask.
+    ///
+    /// In a correctly signed build this is always true. It is false in an
+    /// unsigned build — CI's simulator run, chiefly — where a hard crash at
+    /// launch would be a much worse answer than a store on the local device.
+    /// `scripts/verify-entitlements.sh` is what catches the case that matters,
+    /// a *release* build that lost the entitlement; this is not a substitute
+    /// for it, which is why it logs at error level rather than passing quietly.
+    static let isAppGroupAvailable: Bool = {
+        guard FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) != nil
+        else {
+            logger.error("""
+                App group \(appGroupIdentifier, privacy: .public) is unreachable. \
+                Falling back to a store this process alone can see: widgets and \
+                intents will not observe these notes.
+                """)
+            return false
+        }
+        return true
+    }()
+
     /// The one true configuration. Used by the app, the widgets and App Intents
     /// alike, so there is no way for them to end up looking at different stores.
-    static let sharedConfiguration = ModelConfiguration(
-        "Verso",
-        schema: schema,
-        isStoredInMemoryOnly: false,
-        allowsSave: true,
-        groupContainer: .identifier(appGroupIdentifier),
-        cloudKitDatabase: .private(cloudKitContainerIdentifier)
-    )
+    static var sharedConfiguration: ModelConfiguration {
+        configuration(syncing: true)
+    }
 
-    static func makeShared() -> Result {
-        do {
-            let container = try ModelContainer(for: schema, configurations: [sharedConfiguration])
-            return Result(container: container, mode: .cloudKit)
-        } catch {
-            logger.error("CloudKit-backed store unavailable: \(error.localizedDescription, privacy: .public)")
-        }
-
-        let localConfiguration = ModelConfiguration(
+    private static func configuration(syncing: Bool) -> ModelConfiguration {
+        ModelConfiguration(
             "Verso",
             schema: schema,
             isStoredInMemoryOnly: false,
             allowsSave: true,
-            groupContainer: .identifier(appGroupIdentifier),
-            cloudKitDatabase: .none
+            groupContainer: isAppGroupAvailable ? .identifier(appGroupIdentifier) : .none,
+            cloudKitDatabase: syncing ? .private(cloudKitContainerIdentifier) : .none
         )
+    }
+
+    static func makeShared() -> Result {
+        // No app group means no entitlements at all, and so no iCloud container
+        // either. Attempting CloudKit here would only be a slower way to arrive
+        // at the same local store.
+        if isAppGroupAvailable {
+            do {
+                let container = try ModelContainer(for: schema, configurations: [sharedConfiguration])
+                return Result(container: container, mode: .cloudKit)
+            } catch {
+                logger.error("CloudKit-backed store unavailable: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+
+        let localConfiguration = configuration(syncing: false)
 
         do {
             let container = try ModelContainer(for: schema, configurations: [localConfiguration])
