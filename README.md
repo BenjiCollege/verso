@@ -8,12 +8,13 @@ state of the build.
 
 ---
 
-## Status: Phases 1–5 complete, not yet compiled
+## Status: Phases 1–6 complete, not yet compiled
 
-Phases 1 (Foundation), 2 (Editor), 3 (Data blocks), 4 (Time and place) and
-5 (Templates) are written in full. None of it has **ever been compiled, run, or
-checked against the iOS 26 SDK**, because it was authored on Windows 11 with no
-Xcode, no Swift toolchain, and no simulator available.
+Phases 1 (Foundation), 2 (Editor), 3 (Data blocks), 4 (Time and place),
+5 (Templates) and 6 (Fore-edge and history) are written in full. None of it has
+**ever been compiled, run, or checked against the iOS 26 SDK**, because it was
+authored on Windows 11 with no Xcode, no Swift toolchain, and no simulator
+available.
 
 Everything below is therefore written from knowledge of the frameworks rather
 than verified against the installed SDK, which is the opposite of the rule in
@@ -98,6 +99,17 @@ Phase 5 is mostly JSON and pure Swift. What is left to verify:
 | `ContentUnavailableView.search(text:)` | Empty states in the gallery and the catalog picker. |
 | Application Support directory | User templates are written there; confirm it exists or is created on first save. |
 
+Phase 6's risk is concentrated in Core Haptics, which cannot be exercised in the
+simulator at all:
+
+| Area | What to verify |
+|---|---|
+| `CHHapticEngine.playPattern(from:)` | The five authored AHAP files. Check them on a device — a wrong intensity is not a compile error, and silence is indistinguishable from unsupported hardware. |
+| `CHHapticAdvancedPatternPlayer.sendParameters(_:atTime:)` | Live modulation of the fore-edge scrub bed by thumb velocity. |
+| `NSData.compressed(using: .zlib)` | Snapshot compression, in both directions. |
+| Detached `@Model` instances | `VersionPreview` builds `Block` objects belonging to no `ModelContext` so history renders through the same views as the present. |
+| `DragGesture.Value.time` | Used for scrub velocity. |
+
 ### Known limitations
 
 Deliberate, not oversights:
@@ -170,7 +182,17 @@ All flagged rather than silently taken:
 12. **"One-tap repeat set" is table row duplication.** Repeating a row copies
     its values and clears its checkboxes, which is what "same again" means for
     any table, not just a set of squats.
-13. **No `UIBackgroundModes: audio`.** §7 specifies `AVAudioSession` + a local
+13. **The fore-edge previews; it does not restore.** §6 says dragging scrubs
+    history and content morphs backward as the thumb travels, which it does.
+    Letting go leaves the past version on screen with a bar offering *Restore*
+    or *Back to Now*. Overwriting a note because a thumb happened to stop
+    somewhere would be indefensible, and restoring records the present first, so
+    it is reversible either way.
+14. **The fore-edge scrub bed is built in code, not authored as AHAP.** The
+    other five patterns are files. Every parameter the scrub starts with is
+    replaced by thumb velocity within milliseconds, so authoring them would be
+    documentation pretending to be design.
+15. **No `UIBackgroundModes: audio`.** §7 specifies `AVAudioSession` + a local
    notification for rest timers. The session here only makes the completion
    sound audible over music and with the ringer switch off. Background delivery
    is the notification's job — claiming the audio background mode for a notes
@@ -223,5 +245,10 @@ Adding a theme or a paper stock is likewise one JSON file in
 | `DecompositionTests` | Exact loads, greedy order, shortfall reported rather than rounded away, no floating-point drift at 1.25kg granularity |
 | `TemplateAuthoringTests` | Structure preserved and personal data dropped, export/import round trip, unknown block types skipped |
 | `UserTemplateStoreTests` | Save, rename, delete, export/import minting a new id, hostile filenames sanitised |
+| `NoteSnapshotTests` | Deltas rewind exactly, carry only what changed, distinguish a field cleared from one untouched, and survive compression |
+| `VersionPolicyTests` | Which edits are history and which are typos being fixed |
+| `VersionStoreTests` | Every version in a long delta chain reconstructing exactly, restore being reversible, pruning never orphaning a delta |
+| `ForeEdgeModelTests` / `ForeEdgeScrubberTests` | Density encoding length, pattern encoding theme deterministically, the drag mapping and its inverse agreeing |
+| `HapticPatternTests` | Every named moment has a well-formed AHAP file present in the bundle |
 
 Still owed by §9: vault encrypt/decrypt, which arrives with Phase 8.

@@ -11,6 +11,7 @@ struct ChecklistBlockView: View {
 
     @Environment(\.theme) private var theme
     @Environment(\.motion) private var motion
+    @Environment(HapticEngine.self) private var haptics
     @FocusState private var focusedItem: UUID?
 
     var body: some View {
@@ -93,6 +94,9 @@ struct ChecklistBlockView: View {
             motion.run(.snap) {
                 payload.wrappedValue.setChecked(!item.checked, itemID: item.id)
             }
+            // Only on the way in. Unchecking is a correction, and a correction
+            // should not feel like an achievement.
+            if !item.checked { haptics.play(.checklistCheck) }
         } label: {
             Image(systemName: item.checked ? "checkmark.square.fill" : "square")
                 .font(.system(size: Layout.checkboxSize))

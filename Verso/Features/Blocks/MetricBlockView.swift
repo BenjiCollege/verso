@@ -14,6 +14,7 @@ struct MetricBlockView: View {
     @Environment(\.motion) private var motion
     @Environment(\.modelContext) private var context
     @Environment(RestTimerService.self) private var timers
+    @Environment(HapticEngine.self) private var haptics
 
     @State private var isPersonalBest = false
     @State private var history: [MetricPoint] = []
@@ -65,6 +66,9 @@ struct MetricBlockView: View {
                 if payload.wrappedValue.seriesID.isEmpty {
                     payload.wrappedValue.seriesID = MetricPayload.slug(newValue)
                 }
+            }
+            .onChange(of: isPersonalBest) { wasBest, isBest in
+                if isBest && !wasBest { haptics.play(.personalRecord) }
             }
             .accessibilityElement(children: .contain)
         }

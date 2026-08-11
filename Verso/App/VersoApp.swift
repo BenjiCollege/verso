@@ -16,6 +16,7 @@ struct VersoApp: App {
     /// on your phone must not start counting on your iPad.
     @State private var timers = RestTimerService()
     @State private var userTemplates = UserTemplateStore()
+    @State private var haptics = HapticEngine()
     @State private var schedule: ScheduleService
     @State private var geofences: GeofenceService
 
@@ -38,6 +39,7 @@ struct VersoApp: App {
                 .environment(linkIndex)
                 .environment(timers)
                 .environment(userTemplates)
+                .environment(haptics)
                 .environment(schedule)
                 .environment(geofences)
                 .environment(geofences.authority)
@@ -46,6 +48,7 @@ struct VersoApp: App {
                     // Reminders are rebuilt from the library at launch rather
                     // than trusted to have stayed in step: a note edited on
                     // another device has to take effect here too.
+                    haptics.prepare()
                     await schedule.refresh()
                     await geofences.refresh()
                 }

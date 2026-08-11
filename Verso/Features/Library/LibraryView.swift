@@ -5,6 +5,7 @@ struct LibraryView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.theme) private var theme
     @Environment(\.motion) private var motion
+    @Environment(HapticEngine.self) private var haptics
 
     /// Sorted by recency only: `Bool` isn't `Comparable`, so pinning can't be a
     /// `SortDescriptor`. Pinned notes are lifted into their own section below.
@@ -158,5 +159,6 @@ struct LibraryView: View {
             note.isTrashed = true
             note.trashedAt = Date()
         }
+        haptics.play(.noteDeleted)
     }
 }

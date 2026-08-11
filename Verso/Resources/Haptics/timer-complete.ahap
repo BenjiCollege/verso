@@ -1,0 +1,39 @@
+{
+  "Version": 1,
+  "Metadata": {
+    "Project": "Verso",
+    "Description": "A rest timer reaching zero. Three rising taps — enough to notice with a bar in your hands, not enough to startle."
+  },
+  "Pattern": [
+    {
+      "Event": {
+        "Time": 0.0,
+        "EventType": "HapticTransient",
+        "EventParameters": [
+          { "ParameterID": "HapticIntensity", "ParameterValue": 0.5 },
+          { "ParameterID": "HapticSharpness", "ParameterValue": 0.4 }
+        ]
+      }
+    },
+    {
+      "Event": {
+        "Time": 0.13,
+        "EventType": "HapticTransient",
+        "EventParameters": [
+          { "ParameterID": "HapticIntensity", "ParameterValue": 0.7 },
+          { "ParameterID": "HapticSharpness", "ParameterValue": 0.6 }
+        ]
+      }
+    },
+    {
+      "Event": {
+        "Time": 0.26,
+        "EventType": "HapticTransient",
+        "EventParameters": [
+          { "ParameterID": "HapticIntensity", "ParameterValue": 1.0 },
+          { "ParameterID": "HapticSharpness", "ParameterValue": 0.85 }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "Version": 1,
+  "Metadata": {
+    "Project": "Verso",
+    "Description": "A note going to the trash. A soft falling thunk — something closing, not something breaking."
+  },
+  "Pattern": [
+    {
+      "Event": {
+        "Time": 0.0,
+        "EventType": "HapticContinuous",
+        "EventDuration": 0.22,
+        "EventParameters": [
+          { "ParameterID": "HapticIntensity", "ParameterValue": 0.6 },
+          { "ParameterID": "HapticSharpness", "ParameterValue": 0.3 }
+        ]
+      }
+    },
+    {
+      "ParameterCurve": {
+        "ParameterID": "HapticIntensityControl",
+        "Time": 0.0,
+        "ParameterCurveControlPoints": [
+          { "Time": 0.0, "ParameterValue": 1.0 },
+          { "Time": 0.22, "ParameterValue": 0.0 }
+        ]
+      }
+    },
+    {
+      "ParameterCurve": {
+        "ParameterID": "HapticSharpnessControl",
+        "Time": 0.0,
+        "ParameterCurveControlPoints": [
+          { "Time": 0.0, "ParameterValue": 0.5 },
+          { "Time": 0.22, "ParameterValue": 0.0 }
+        ]
+      }
+    }
+  ]
+}

@@ -19,6 +19,7 @@ struct NoteEditorView: View {
     @Environment(\.motion) private var motion
     @Environment(AppearanceStore.self) private var appearance
     @Environment(LinkIndex.self) private var linkIndex
+    @Environment(HapticEngine.self) private var haptics
 
     @State private var session = TextEditingSession()
     @State private var scrollPosition = ScrollPosition()
@@ -27,6 +28,12 @@ struct NoteEditorView: View {
     @State private var isSavingTemplate = false
     @State private var isFocusMode = false
     @State private var isCaretSuppressed = false
+    /// Which version the fore-edge is previewing. `nil` is the present.
+    @State private var scrubIndex: Int?
+    @State private var scrubbedSnapshot: NoteSnapshot?
+
+    private var versionStore: VersionStore { VersionStore(context: context) }
+    private var versions: [Version] { versionStore.versions(of: note) }
 
     private var theme: Theme { catalog.theme(id: note.themeID) ?? appTheme }
     private var stock: Stock { catalog.stock(id: note.stockID) ?? appStock }
@@ -42,7 +49,11 @@ struct NoteEditorView: View {
     var body: some View {
         ZStack {
             theme.stock.ignoresSafeArea()
-            page
+
+            HStack(spacing: 0) {
+                foreEdge
+                page
+            }
         }
         .versoTheme(theme, stock: stock, pinnedColorScheme: note.themeID == nil ? nil : theme.colorScheme)
         .environment(\.textEditingSession, session)
@@ -62,9 +73,46 @@ struct NoteEditorView: View {
         .onChange(of: session.caretRectInPage) { _, caret in
             followCaret(to: caret)
         }
+        .onChange(of: scrubIndex) { _, index in
+            scrubbedSnapshot = index.flatMap { versionStore.snapshot(at: $0, of: note) }
+        }
+        .task {
+            haptics.prepare()
+            // The first version is the note as it was when opened, so there is
+            // always something to scrub back to.
+            versionStore.record(note)
+        }
         .onDisappear {
+            versionStore.record(note)
             Task { await linkIndex.noteDidChange(note.id) }
         }
+    }
+
+    // MARK: - Fore-edge
+
+    private var foreEdge: some View {
+        ForeEdgeView(
+            model: ForeEdgeModel.make(
+                readableLength: NoteSnapshot(note).readableLength,
+                themeID: theme.id,
+                isLocked: note.isLocked
+            ),
+            versionCount: versions.count,
+            scrubIndex: $scrubIndex
+        )
+        .padding(.leading, Layout.Space.tight)
+        .opacity(isChromeHidden ? 0 : 1)
+        .animation(motion.animation(.settle), value: isChromeHidden)
+    }
+
+    private func restoreScrubbedVersion() {
+        guard let snapshot = scrubbedSnapshot else { return }
+        motion.run(.pageTurn) {
+            versionStore.restore(snapshot, to: note)
+            scrubIndex = nil
+            scrubbedSnapshot = nil
+        }
+        haptics.play(.vaultClasp)
     }
 
     // MARK: - Page
@@ -72,16 +120,24 @@ struct NoteEditorView: View {
     private var page: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: Layout.Space.snug) {
-                titleField
+                if let scrubbedSnapshot, let index = scrubIndex, versions.indices.contains(index) {
+                    // Content morphs backward in time as the thumb travels. The
+                    // transition is a cross-fade under Reduce Motion.
+                    VersionPreview(snapshot: scrubbedSnapshot, recordedAt: versions[index].createdAt)
+                        .transition(motion.transition(.pageTurn, motion: .opacity))
+                        .id(index)
+                } else {
+                    titleField
 
-                ForEach(note.orderedBlocks) { block in
-                    BlockRenderer(block: block)
-                        .opacity(dimming(for: block))
-                        .animation(motion.animation(.settle), value: isChromeHidden)
-                        .animation(motion.animation(.settle), value: session.activeBlockID)
+                    ForEach(note.orderedBlocks) { block in
+                        BlockRenderer(block: block)
+                            .opacity(dimming(for: block))
+                            .animation(motion.animation(.settle), value: isChromeHidden)
+                            .animation(motion.animation(.settle), value: session.activeBlockID)
+                    }
+
+                    BacklinksView(noteID: note.id)
                 }
-
-                BacklinksView(noteID: note.id)
 
                 Color.clear
                     .frame(height: scroller.bottomInset(viewportHeight: scrollGeometry?.containerSize.height ?? 0))
@@ -135,6 +191,20 @@ struct NoteEditorView: View {
     @ViewBuilder
     private var keyboardAccessories: some View {
         VStack(spacing: Layout.Space.snug) {
+            if let index = scrubIndex, versions.indices.contains(index) {
+                VersionScrubBar(
+                    recordedAt: versions[index].createdAt,
+                    onRestore: restoreScrubbedVersion,
+                    onDismiss: {
+                        motion.run(.pageTurn) {
+                            scrubIndex = nil
+                            scrubbedSnapshot = nil
+                        }
+                    }
+                )
+                .transition(motion.transition(.settle, motion: .move(edge: .bottom).combined(with: .opacity)))
+            }
+
             if let draft = session.linkDraft {
                 WikiLinkSuggestions(
                     draft: draft,
@@ -150,6 +220,7 @@ struct NoteEditorView: View {
         }
         .animation(motion.animation(.settle), value: session.isEditing)
         .animation(motion.animation(.settle), value: session.linkDraft)
+        .animation(motion.animation(.settle), value: scrubIndex)
     }
 
     // MARK: - Toolbar

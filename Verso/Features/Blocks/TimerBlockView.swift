@@ -6,6 +6,7 @@ struct TimerBlockView: View {
     @Environment(\.theme) private var theme
     @Environment(\.motion) private var motion
     @Environment(RestTimerService.self) private var timers
+    @Environment(HapticEngine.self) private var haptics
 
     @State private var isEditingDuration = false
 
@@ -35,6 +36,11 @@ struct TimerBlockView: View {
                 controls(state: state, hasFinished: hasFinished, payload: payload.wrappedValue)
             }
             .padding(.vertical, Layout.Space.tight)
+            // Fires whether the timer ran out on screen or the app came back to
+            // find it already finished.
+            .onChange(of: timers.justFinished.contains(block.id)) { wasFinished, isFinished in
+                if isFinished && !wasFinished { haptics.play(.timerComplete) }
+            }
             .task {
                 // Auto-start is what makes a rest timer on a template useful
                 // rather than one more thing to remember to tap.

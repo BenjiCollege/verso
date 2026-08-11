@@ -1,0 +1,19 @@
+{
+  "Version": 1,
+  "Metadata": {
+    "Project": "Verso",
+    "Description": "Checking an item off. One crisp tick — it should feel like the pen, not like a notification."
+  },
+  "Pattern": [
+    {
+      "Event": {
+        "Time": 0.0,
+        "EventType": "HapticTransient",
+        "EventParameters": [
+          { "ParameterID": "HapticIntensity", "ParameterValue": 0.55 },
+          { "ParameterID": "HapticSharpness", "ParameterValue": 0.92 }
+        ]
+      }
+    }
+  ]
+}
