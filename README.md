@@ -8,13 +8,13 @@ state of the build.
 
 ---
 
-## Status: Phases 1–6 complete, not yet compiled
+## Status: Phases 1–7 complete, not yet compiled
 
 Phases 1 (Foundation), 2 (Editor), 3 (Data blocks), 4 (Time and place),
-5 (Templates) and 6 (Fore-edge and history) are written in full. None of it has
-**ever been compiled, run, or checked against the iOS 26 SDK**, because it was
-authored on Windows 11 with no Xcode, no Swift toolchain, and no simulator
-available.
+5 (Templates), 6 (Fore-edge and history) and 7 (Reveal and share) are written in
+full. None of it has **ever been compiled, run, or checked against the iOS 26
+SDK**, because it was authored on Windows 11 with no Xcode, no Swift toolchain,
+and no simulator available.
 
 Everything below is therefore written from knowledge of the frameworks rather
 than verified against the installed SDK, which is the opposite of the rule in
@@ -110,6 +110,16 @@ simulator at all:
 | Detached `@Model` instances | `VersionPreview` builds `Block` objects belonging to no `ModelContext` so history renders through the same views as the present. |
 | `DragGesture.Value.time` | Used for scrub velocity. |
 
+Phase 7's risk is rendering — none of which can be judged from source:
+
+| Area | What to verify |
+|---|---|
+| `ImageRenderer.render(rasterizationScale:renderer:)` | PDF export draws into a `CGContext` this way and paginates by translating it. Check that a two-page note actually produces two pages and that text stays vector. |
+| `CGImageDestination` with `UTType.gif` | The animated share card. Check frame timing and loop count. |
+| `NSTextLayoutManager.setRenderingAttributes` under a `TimelineView` | Per-word and per-glyph reveal. Watch for it fighting the layout manager at 60fps. |
+| `TimelineView(.animation(paused:))` | Drives the reveal clock; confirm it actually stops when paused. |
+| `persistentSystemOverlays(.hidden)` | Read Mode chrome hiding. |
+
 ### Known limitations
 
 Deliberate, not oversights:
@@ -192,7 +202,19 @@ All flagged rather than silently taken:
     other five patterns are files. Every parameter the scrub starts with is
     replaced by thumb velocity within milliseconds, so authoring them would be
     documentation pretending to be design.
-15. **No `UIBackgroundModes: audio`.** §7 specifies `AVAudioSession` + a local
+15. **The reveal works at two levels, and which one depends on the style.**
+    Every style staggers whole blocks; `typewriter`, `fadeUp` and `blurIn`
+    additionally reveal *within* text blocks via TextKit 2 rendering
+    attributes. A checklist or a chart has no glyphs to stagger, and
+    per-glyph *offset* or *blur* would need custom fragment drawing with a
+    transform per line — so those arrive as whole blocks. Nothing in §6 says
+    otherwise, but it is worth knowing which half of a reveal you are seeing.
+16. **The animated share card is a GIF, not a video.** §7 says "animated share
+    card" without naming a format. A GIF needs no export session, no asset
+    writer and no permissions, plays inline in every messaging app, and is
+    written with ImageIO, which is already present. Nothing is uploaded to make
+    one.
+17. **No `UIBackgroundModes: audio`.** §7 specifies `AVAudioSession` + a local
    notification for rest timers. The session here only makes the completion
    sound audible over music and with the ringer switch off. Background delivery
    is the notification's job — claiming the audio background mode for a notes
@@ -250,5 +272,7 @@ Adding a theme or a paper stock is likewise one JSON file in
 | `VersionStoreTests` | Every version in a long delta chain reconstructing exactly, restore being reversible, pruning never orphaning a delta |
 | `ForeEdgeModelTests` / `ForeEdgeScrubberTests` | Density encoding length, pattern encoding theme deterministically, the drag mapping and its inverse agreeing |
 | `HapticPatternTests` | Every named moment has a well-formed AHAP file present in the bundle |
+| `RevealEngineTests` | Stagger and progress over time, every style starting hidden and settling fully visible, Reduce Motion flattening all six, word units tiling with no gaps, glyph units being composed sequences in UTF-16 |
+| `MarkdownExportTests` | Every block type exporting, pipe escaping in tables, formulas exporting as expressions rather than stale results, unreadable blocks skipped, hostile filenames |
 
 Still owed by §9: vault encrypt/decrypt, which arrives with Phase 8.

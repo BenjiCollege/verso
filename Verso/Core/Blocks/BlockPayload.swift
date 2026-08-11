@@ -22,12 +22,21 @@ protocol BlockPayload: Codable, Sendable, Equatable {
     /// The default keeps everything, which is right for headings, dividers and
     /// anything else that is already structure.
     func resetForTemplate() -> Self
+
+    /// The block as Markdown, for export.
+    ///
+    /// Defaults to the plain-text projection, which is right for anything with
+    /// no structure worth marking up. Overriding it is how a block type teaches
+    /// the exporter about itself — the exporter never learns about block types.
+    var markdownRepresentation: String { get }
 }
 
 extension BlockPayload {
     var plainTextRepresentation: String { "" }
 
     func resetForTemplate() -> Self { self }
+
+    var markdownRepresentation: String { plainTextRepresentation }
 }
 
 enum BlockRegistryError: LocalizedError, Equatable {

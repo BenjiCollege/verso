@@ -26,6 +26,8 @@ struct NoteEditorView: View {
     @State private var scrollGeometry: ScrollGeometry?
     @State private var isReordering = false
     @State private var isSavingTemplate = false
+    @State private var isReading = false
+    @State private var isExporting = false
     @State private var isFocusMode = false
     @State private var isCaretSuppressed = false
     /// Which version the fore-edge is previewing. `nil` is the present.
@@ -69,6 +71,12 @@ struct NoteEditorView: View {
         }
         .sheet(isPresented: $isSavingTemplate) {
             SaveAsTemplateSheet(note: note)
+        }
+        .sheet(isPresented: $isExporting) {
+            ExportSheet(note: note)
+        }
+        .fullScreenCover(isPresented: $isReading) {
+            ReadModeView(note: note)
         }
         .onChange(of: session.caretRectInPage) { _, caret in
             followCaret(to: caret)
@@ -256,6 +264,25 @@ struct NoteEditorView: View {
                     Label("Reorder Blocks", systemImage: "arrow.up.arrow.down")
                 }
                 Button {
+                    isReading = true
+                } label: {
+                    Label("Read Mode", systemImage: "book.pages")
+                }
+                Button {
+                    isExporting = true
+                } label: {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
+
+                Divider()
+
+                Picker("Reveal", selection: revealStyleBinding) {
+                    ForEach(RevealStyle.allCases, id: \.self) { style in
+                        Text(style.displayName).tag(style)
+                    }
+                }
+
+                Button {
                     isSavingTemplate = true
                 } label: {
                     Label("Save as Template", systemImage: "square.on.square")
@@ -264,6 +291,18 @@ struct NoteEditorView: View {
                 Label("Page options", systemImage: "ellipsis.circle")
             }
         }
+    }
+
+    /// The reveal is a property of the note, so a journal can unfurl and a
+    /// shopping list can stay still.
+    private var revealStyleBinding: Binding<RevealStyle> {
+        Binding(
+            get: { RevealStyle(rawValue: note.revealStyleID ?? "") ?? .fadeUp },
+            set: { newValue in
+                note.revealStyleID = newValue.rawValue
+                note.touch()
+            }
+        )
     }
 
     private var focusModeBinding: Binding<Bool> {

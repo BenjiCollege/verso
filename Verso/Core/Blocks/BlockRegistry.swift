@@ -32,6 +32,9 @@ struct BlockRegistry: Sendable {
 
         /// Stored bytes, blanked of personal data, as inline JSON.
         let toTemplateJSON: @Sendable (Data) throws -> JSONValue
+
+        /// The block as Markdown.
+        let markdown: @Sendable (Data) throws -> String
     }
 
     private let entries: [BlockType: Entry]
@@ -58,7 +61,8 @@ struct BlockRegistry: Sendable {
             toTemplateJSON: { data in
                 let reset = try BlockCoding.decode(P.self, from: data).resetForTemplate()
                 return try BlockCoding.makeDecoder().decode(JSONValue.self, from: BlockCoding.encode(reset))
-            }
+            },
+            markdown: { data in try BlockCoding.decode(P.self, from: data).markdownRepresentation }
         )
     }
 
@@ -128,6 +132,17 @@ struct BlockRegistry: Sendable {
 
     func templateJSON(_ data: Data, as type: BlockType) throws -> JSONValue {
         try entry(for: type).toTemplateJSON(data)
+    }
+
+    func markdown(_ data: Data, as type: BlockType) throws -> String {
+        try entry(for: type).markdown(data)
+    }
+
+    /// Best-effort Markdown for a stored block. Returns "" for anything this
+    /// build cannot read, because an export must never fail on one bad block.
+    func markdown(for block: Block) -> String {
+        guard let type = block.type, isImplemented(type) else { return "" }
+        return (try? markdown(block.payload, as: type)) ?? ""
     }
 
     /// Best-effort plain text for a stored block. Returns "" for anything this
