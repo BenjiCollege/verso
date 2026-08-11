@@ -157,8 +157,10 @@ struct PassphraseKDFTests {
     @Test("The vault key survives being wrapped and unwrapped")
     func wrapRoundTrip() throws {
         let vaultKey = SymmetricKey(size: .bits256)
-        var wrapped = try WrappedVaultKey.wrap(vaultKey, passphrase: "correct horse battery")
-        wrapped.iterations = wrapped.iterations
+        let wrapped = try WrappedVaultKey.wrap(vaultKey, passphrase: "correct horse battery")
+        // Carried in the record rather than assumed, so raising the default
+        // later does not lock anybody out of a note wrapped before the change.
+        #expect(wrapped.iterations == PassphraseKDF.defaultIterations)
 
         let recovered = try wrapped.unwrap(passphrase: "correct horse battery")
         #expect(recovered == vaultKey)
