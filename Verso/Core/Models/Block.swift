@@ -37,22 +37,38 @@ extension Block {
         )
     }
 
+    /// True when the bytes on disk are ciphertext.
+    var isSealed: Bool { VaultCipher.isSealed(payload) }
+
     /// Decodes into a known concrete payload type.
+    ///
+    /// Decryption happens here rather than at the call sites, so a payload read
+    /// by code written after the vault existed is decrypted whether or not its
+    /// author thought about it.
     func decoded<P: BlockPayload>(as _: P.Type = P.self) throws -> P {
         guard typeRaw == P.blockType.rawValue else {
             throw BlockRegistryError.typeMismatch(expected: P.blockType.rawValue, found: typeRaw)
         }
-        return try BlockCoding.decode(P.self, from: payload)
+        return try BlockCoding.decode(P.self, from: VaultKeyring.shared.open(payload))
     }
 
     /// Decodes through the registry when the concrete type isn't known statically.
     func decodedPayload() throws -> any BlockPayload {
         guard let type else { throw BlockRegistryError.unknownType(typeRaw) }
-        return try BlockRegistry.shared.decode(payload, as: type)
+        return try BlockRegistry.shared.decode(VaultKeyring.shared.open(payload), as: type)
     }
 
+    /// Encrypts on the way in when the note it belongs to is locked, so
+    /// plaintext never reaches SwiftData for a locked note — not even briefly.
     func store<P: BlockPayload>(_ payload: P) throws {
         typeRaw = P.blockType.rawValue
-        self.payload = try BlockCoding.encode(payload)
+        let encoded = try BlockCoding.encode(payload)
+        self.payload = (note?.isLocked ?? false) ? try VaultKeyring.shared.seal(encoded) : encoded
+    }
+
+    /// The decrypted bytes, or `nil` when the vault is closed. For read paths
+    /// that must never throw.
+    var readablePayload: Data? {
+        VaultKeyring.shared.openIfPossible(payload)
     }
 }

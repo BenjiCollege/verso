@@ -10,6 +10,18 @@ struct SettingsView: View {
     @Environment(\.theme) private var theme
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
+    @Environment(VaultService.self) private var vault
+
+    @State private var isShowingVault = false
+
+    private var vaultSummary: String {
+        switch vault.state {
+        case .notSetUp: String(localized: "Not set up")
+        case .needsPassphrase: String(localized: "Needs your passphrase")
+        case .locked: String(localized: "Locked")
+        case .unlocked: String(localized: "Open")
+        }
+    }
 
     var body: some View {
         @Bindable var appearance = appearance
@@ -52,6 +64,17 @@ struct SettingsView: View {
                         .foregroundStyle(theme.inkSecondary)
                 }
 
+                Section("Vault") {
+                    Button {
+                        isShowingVault = true
+                    } label: {
+                        LabeledContent("Locked notes") {
+                            Text(vaultSummary).foregroundStyle(theme.inkSecondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+
                 Section("iCloud") {
                     LabeledContent("Sync") {
                         Text(persistenceMode.summary)
@@ -76,6 +99,9 @@ struct SettingsView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .sheet(isPresented: $isShowingVault) {
+                VaultGateView()
             }
         }
     }

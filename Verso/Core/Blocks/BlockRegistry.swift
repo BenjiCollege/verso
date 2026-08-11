@@ -146,10 +146,14 @@ struct BlockRegistry: Sendable {
     }
 
     /// Best-effort plain text for a stored block. Returns "" for anything this
-    /// build can't read, because previews and titling must never throw.
+    /// build can't read *or* can't decrypt, because previews and titling must
+    /// never throw and a locked note has nothing to preview.
     func plainText(for block: Block) -> String {
-        guard let type = block.type, let entry = entries[type] else { return "" }
-        return (try? entry.plainText(block.payload)) ?? ""
+        guard let type = block.type,
+              let entry = entries[type],
+              let data = block.readablePayload
+        else { return "" }
+        return (try? entry.plainText(data)) ?? ""
     }
 
     /// Creates a detached block of the given type carrying its default payload.

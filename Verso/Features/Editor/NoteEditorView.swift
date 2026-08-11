@@ -20,6 +20,7 @@ struct NoteEditorView: View {
     @Environment(AppearanceStore.self) private var appearance
     @Environment(LinkIndex.self) private var linkIndex
     @Environment(HapticEngine.self) private var haptics
+    @Environment(VaultService.self) private var vault
 
     @State private var session = TextEditingSession()
     @State private var scrollPosition = ScrollPosition()
@@ -28,6 +29,8 @@ struct NoteEditorView: View {
     @State private var isSavingTemplate = false
     @State private var isReading = false
     @State private var isExporting = false
+    @State private var isShowingVaultGate = false
+    @State private var lockFailure: String?
     @State private var isFocusMode = false
     @State private var isCaretSuppressed = false
     /// Which version the fore-edge is previewing. `nil` is the present.
@@ -52,9 +55,15 @@ struct NoteEditorView: View {
         ZStack {
             theme.stock.ignoresSafeArea()
 
-            HStack(spacing: 0) {
-                foreEdge
-                page
+            // A locked note shows nothing until the vault is open. Its bytes
+            // are ciphertext, so there is genuinely nothing to show.
+            if note.isLocked && vault.state != .unlocked {
+                LockedNoteView(note: note)
+            } else {
+                HStack(spacing: 0) {
+                    foreEdge
+                    page
+                }
             }
         }
         .versoTheme(theme, stock: stock, pinnedColorScheme: note.themeID == nil ? nil : theme.colorScheme)
@@ -77,6 +86,21 @@ struct NoteEditorView: View {
         }
         .fullScreenCover(isPresented: $isReading) {
             ReadModeView(note: note)
+        }
+        .sheet(isPresented: $isShowingVaultGate) {
+            VaultGateView()
+        }
+        .alert(
+            "Couldn't change the lock",
+            isPresented: Binding(get: { lockFailure != nil }, set: { if !$0 { lockFailure = nil } }),
+            presenting: lockFailure
+        ) { _ in
+            Button("OK", role: .cancel) { lockFailure = nil }
+        } message: { message in
+            Text(message)
+        }
+        .onChange(of: note.isLocked) { _, isLocked in
+            vault.isViewingLockedNote = isLocked
         }
         .onChange(of: session.caretRectInPage) { _, caret in
             followCaret(to: caret)
@@ -111,6 +135,27 @@ struct NoteEditorView: View {
         .padding(.leading, Layout.Space.tight)
         .opacity(isChromeHidden ? 0 : 1)
         .animation(motion.animation(.settle), value: isChromeHidden)
+    }
+
+    /// Locking needs the vault open, because encrypting requires the key just
+    /// as much as decrypting does. If it is closed, the gate is shown instead
+    /// of a failure.
+    private func toggleLock() {
+        guard vault.state == .unlocked else {
+            isShowingVaultGate = true
+            return
+        }
+
+        do {
+            if note.isLocked {
+                try vault.unlockNote(note)
+            } else {
+                try vault.lockNote(note)
+            }
+            haptics.play(.vaultClasp)
+        } catch {
+            lockFailure = error.localizedDescription
+        }
     }
 
     private func restoreScrubbedVersion() {
@@ -268,10 +313,23 @@ struct NoteEditorView: View {
                 } label: {
                     Label("Read Mode", systemImage: "book.pages")
                 }
+                // A locked note cannot be shared even while the vault is open.
+                // The point of locking it was to keep it in.
+                if VaultPolicy.isEligibleForSharing(note) {
+                    Button {
+                        isExporting = true
+                    } label: {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                    }
+                }
+
                 Button {
-                    isExporting = true
+                    toggleLock()
                 } label: {
-                    Label("Share", systemImage: "square.and.arrow.up")
+                    Label(
+                        note.isLocked ? "Remove Lock" : "Lock Note",
+                        systemImage: note.isLocked ? "lock.open" : "lock"
+                    )
                 }
 
                 Divider()

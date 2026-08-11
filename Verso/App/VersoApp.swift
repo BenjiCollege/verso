@@ -19,6 +19,9 @@ struct VersoApp: App {
     @State private var haptics = HapticEngine()
     @State private var schedule: ScheduleService
     @State private var geofences: GeofenceService
+    @State private var vault: VaultService
+
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         let persistence = VersoModelContainer.makeShared()
@@ -30,11 +33,28 @@ struct VersoApp: App {
         _geofences = State(
             initialValue: GeofenceService(container: persistence.container, authority: authority)
         )
+        _vault = State(initialValue: VaultService(container: persistence.container))
     }
 
     var body: some Scene {
         WindowGroup {
             RootView()
+                // iOS photographs the screen on the way to the background, and
+                // that image is not encrypted by anything Verso does. Covering
+                // it has to happen on `.inactive`, before the snapshot is
+                // taken — waiting for `.background` is too late.
+                .overlay {
+                    if scenePhase != .active && vault.requiresPrivacyScreen {
+                        PrivacyScreen()
+                    }
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    // Leaving the app closes the vault. Coming back should ask
+                    // again; a vault that stays open in your pocket is a Face ID
+                    // gate wearing a costume.
+                    if phase == .background { vault.lock() }
+                }
+                .environment(vault)
                 .environment(appearance)
                 .environment(linkIndex)
                 .environment(timers)

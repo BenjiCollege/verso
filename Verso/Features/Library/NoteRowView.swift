@@ -5,18 +5,18 @@ struct NoteRowView: View {
 
     @Environment(\.theme) private var theme
 
-    /// The first line of readable content, whatever block it came from. Uses
-    /// the registry rather than looking for a text block, so a note that opens
-    /// with a checklist still previews.
+    /// The first line of readable content, whatever block it came from.
+    ///
+    /// Routed through `VaultPolicy`, so a locked note shows nothing here
+    /// whether or not the vault happens to be open — a list is a place someone
+    /// else can read over your shoulder.
     private var preview: String {
-        for block in note.orderedBlocks {
-            let text = BlockRegistry.shared.plainText(for: block)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            if !text.isEmpty {
-                return text.replacingOccurrences(of: "\n", with: " · ")
-            }
-        }
-        return ""
+        VaultPolicy.listPreview(for: note)
+    }
+
+    private var title: String {
+        let resolved = VaultPolicy.listTitle(for: note)
+        return resolved.isEmpty ? String(localized: "Untitled") : resolved
     }
 
     var body: some View {
@@ -28,9 +28,15 @@ struct NoteRowView: View {
                         .accessibilityHidden(true)
                 }
 
-                Text(note.title.isEmpty ? String(localized: "Untitled") : note.title)
+                if note.isLocked {
+                    Image(systemName: "lock.fill")
+                        .foregroundStyle(theme.gilt)
+                        .accessibilityHidden(true)
+                }
+
+                Text(title)
                     .versoText(.chromeBody)
-                    .foregroundStyle(note.title.isEmpty ? theme.inkSecondary : theme.ink)
+                    .foregroundStyle(note.title.isEmpty || note.isLocked ? theme.inkSecondary : theme.ink)
                     .lineLimit(1)
             }
 
@@ -47,8 +53,9 @@ struct NoteRowView: View {
         }
         .padding(.vertical, Layout.Space.tight)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text(note.title.isEmpty ? String(localized: "Untitled note") : note.title))
+        .accessibilityLabel(Text(title))
         .accessibilityValue(Text(preview))
+        .accessibilityHint(note.isLocked ? Text("Locked. Opening it needs the vault.") : Text(""))
         .accessibilityAddTraits(note.isPinned ? [.isSelected] : [])
     }
 }

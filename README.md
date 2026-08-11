@@ -8,13 +8,18 @@ state of the build.
 
 ---
 
-## Status: Phases 1–7 complete, not yet compiled
+## Status: Phases 1–8 complete, not yet compiled
 
 Phases 1 (Foundation), 2 (Editor), 3 (Data blocks), 4 (Time and place),
-5 (Templates), 6 (Fore-edge and history) and 7 (Reveal and share) are written in
-full. None of it has **ever been compiled, run, or checked against the iOS 26
-SDK**, because it was authored on Windows 11 with no Xcode, no Swift toolchain,
-and no simulator available.
+5 (Templates), 6 (Fore-edge and history), 7 (Reveal and share) and 8 (Vault) are
+written in full. None of it has **ever been compiled, run, or checked against
+the iOS 26 SDK**, because it was authored on Windows 11 with no Xcode, no Swift
+toolchain, and no simulator available.
+
+**Phase 8 is security code that has never run.** Treat every claim it makes as
+unverified until it has been exercised on a device: the encryption round-trips
+are tested, but the Keychain access control, the biometric prompt and the
+iCloud Keychain sync are not testable without hardware.
 
 Everything below is therefore written from knowledge of the frameworks rather
 than verified against the installed SDK, which is the opposite of the rule in
@@ -120,6 +125,17 @@ Phase 7's risk is rendering — none of which can be judged from source:
 | `TimelineView(.animation(paused:))` | Drives the reveal clock; confirm it actually stops when paused. |
 | `persistentSystemOverlays(.hidden)` | Read Mode chrome hiding. |
 
+Phase 8 is the highest-consequence unverified code in the project:
+
+| Area | What to verify |
+|---|---|
+| `SecAccessControlCreateWithFlags(.biometryCurrentSet)` | The local key must be destroyed by the system when enrolled biometrics change. Test by adding a face/finger and confirming the vault falls back to the passphrase. |
+| Two keychain items, one synchronizable | Biometry-bound items cannot sync, which is why there are two. Verify the wrapped key actually reaches a second device via iCloud Keychain, and that the local one does not. |
+| `SecItemCopyMatching` off the main actor | It blocks on the system prompt. `VaultService` runs it detached; confirm nothing deadlocks. |
+| `kSecUseAuthenticationUIFail` | Used to ask whether a key exists *without* prompting. Confirm it returns `errSecInteractionNotAllowed` rather than putting up Face ID on launch. |
+| `CCKeyDerivationPBKDF` | PBKDF2 at 310,000 iterations. Time it on the oldest supported device — if it is unusably slow, lower it deliberately rather than by accident. |
+| Privacy screen timing | It must appear on `.inactive`, before iOS takes the app-switcher snapshot. `.background` is too late. |
+
 ### Known limitations
 
 Deliberate, not oversights:
@@ -214,7 +230,19 @@ All flagged rather than silently taken:
     writer and no permissions, plays inline in every messaging app, and is
     written with ImageIO, which is already present. Nothing is uploaded to make
     one.
-17. **No `UIBackgroundModes: audio`.** §7 specifies `AVAudioSession` + a local
+17. **The passphrase-wrapped vault key lives in iCloud Keychain, not in a
+    `@Model`.** §7 requires the wrapped key to reach other devices. A
+    synchronizable keychain item does that end-to-end encrypted with no schema
+    change; a `VaultRecord` model would have been a §4 change, and those are
+    yours to approve. The trade-off: if iCloud Keychain is switched off, the
+    wrapped key does not travel, and the vault has to be set up again on the
+    second device. A model would be the belt-and-braces alternative.
+18. **Locking a note also encrypts its version history.** §7 does not mention
+    versions, but a snapshot holding yesterday's plaintext would make locking
+    cosmetic.
+19. **Leaving the app closes the vault.** A vault that stays open in your pocket
+    is a Face ID gate wearing a costume.
+20. **No `UIBackgroundModes: audio`.** §7 specifies `AVAudioSession` + a local
    notification for rest timers. The session here only makes the completion
    sound audible over music and with the ringer switch off. Background delivery
    is the notification's job — claiming the audio background mode for a notes
@@ -274,5 +302,8 @@ Adding a theme or a paper stock is likewise one JSON file in
 | `HapticPatternTests` | Every named moment has a well-formed AHAP file present in the bundle |
 | `RevealEngineTests` | Stagger and progress over time, every style starting hidden and settling fully visible, Reduce Motion flattening all six, word units tiling with no gaps, glyph units being composed sequences in UTF-16 |
 | `MarkdownExportTests` | Every block type exporting, pipe escaping in tables, formulas exporting as expressions rather than stale results, unreadable blocks skipped, hostile filenames |
+| `VaultCipherTests` | Round-trip, ciphertext leaking nothing, tampering detected, wrong key rejected, unique nonces, idempotent sealing |
+| `PassphraseKDFTests` | Deterministic derivation, salts mattering and being random, Unicode normalisation, wrap/unwrap, the synced blob revealing no key material |
+| `VaultKeyringTests` | Locked notes storing ciphertext and unlocked ones storing plaintext, a closed vault refusing, and all four §7 exclusions |
 
 Still owed by §9: vault encrypt/decrypt, which arrives with Phase 8.
