@@ -88,9 +88,17 @@ extension Note {
         normalizeBlockPositions()
     }
 
+    /// Reorders in place. Written out rather than using SwiftUI's
+    /// `move(fromOffsets:toOffset:)` so the model layer doesn't import SwiftUI.
     func moveBlocks(fromOffsets source: IndexSet, toOffset destination: Int) {
         var ordered = orderedBlocks
-        ordered.move(fromOffsets: source, toOffset: destination)
+        let moved = source.sorted().map { ordered[$0] }
+        // Removing high-to-low keeps the remaining indices valid.
+        for index in source.sorted(by: >) {
+            ordered.remove(at: index)
+        }
+        let insertionPoint = destination - source.filter { $0 < destination }.count
+        ordered.insert(contentsOf: moved, at: max(0, min(insertionPoint, ordered.count)))
         blocks = ordered
         normalizeBlockPositions()
     }

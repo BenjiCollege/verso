@@ -6,14 +6,16 @@ struct LibraryView: View {
     @Environment(\.theme) private var theme
     @Environment(\.motion) private var motion
 
+    /// Sorted by recency only: `Bool` isn't `Comparable`, so pinning can't be a
+    /// `SortDescriptor`. Pinned notes are lifted into their own section below.
     @Query(
         filter: #Predicate<Note> { !$0.isTrashed && !$0.isHidden },
-        sort: [
-            SortDescriptor(\Note.isPinned, order: .reverse),
-            SortDescriptor(\Note.modifiedAt, order: .reverse),
-        ]
+        sort: [SortDescriptor(\Note.modifiedAt, order: .reverse)]
     )
     private var notes: [Note]
+
+    private var pinnedNotes: [Note] { notes.filter(\.isPinned) }
+    private var unpinnedNotes: [Note] { notes.filter { !$0.isPinned } }
 
     @State private var isChoosingTemplate = false
     @State private var isShowingSettings = false
@@ -57,34 +59,42 @@ struct LibraryView: View {
 
     private var noteList: some View {
         List {
-            ForEach(notes) { note in
-                NavigationLink {
-                    NoteEditorView(note: note)
-                } label: {
-                    NoteRowView(note: note)
+            if !pinnedNotes.isEmpty {
+                Section("Pinned") {
+                    ForEach(pinnedNotes) { row($0) }
                 }
-                .listRowBackground(theme.stock)
-                .swipeActions(edge: .trailing) {
-                    Button(role: .destructive) {
-                        trash(note)
-                    } label: {
-                        Label("Delete", systemImage: "trash")
-                    }
-                }
-                .swipeActions(edge: .leading) {
-                    Button {
-                        motion.run(.settle) {
-                            note.isPinned.toggle()
-                        }
-                    } label: {
-                        Label(note.isPinned ? "Unpin" : "Pin", systemImage: note.isPinned ? "pin.slash" : "pin")
-                    }
-                    .tint(theme.accent)
-                }
+            }
+
+            Section {
+                ForEach(unpinnedNotes) { row($0) }
             }
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+    }
+
+    private func row(_ note: Note) -> some View {
+        NavigationLink {
+            NoteEditorView(note: note)
+        } label: {
+            NoteRowView(note: note)
+        }
+        .listRowBackground(theme.stock)
+        .swipeActions(edge: .trailing) {
+            Button(role: .destructive) {
+                trash(note)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+        .swipeActions(edge: .leading) {
+            Button {
+                motion.run(.settle) { note.isPinned.toggle() }
+            } label: {
+                Label(note.isPinned ? "Unpin" : "Pin", systemImage: note.isPinned ? "pin.slash" : "pin")
+            }
+            .tint(theme.accent)
+        }
     }
 
     private var emptyState: some View {

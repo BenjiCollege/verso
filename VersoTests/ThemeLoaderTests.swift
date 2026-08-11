@@ -55,7 +55,7 @@ struct ThemeLoaderTests {
               accent: "#5F7A6B", rule: "#D5D8D2", edge: "#7C837C", gilt: "#7C837C", grain: 0.05),
     ]
 
-    @Test("Theme palettes match the specification", arguments: specifiedThemes)
+    @Test("Theme palettes match the specification", arguments: ThemeLoaderTests.specifiedThemes)
     func themePalettesMatchSpecification(spec: ThemeSpec) throws {
         let theme = try #require(catalog.theme(id: spec.id))
         #expect(theme.palette.stock.hexString == spec.stock)
@@ -88,7 +88,7 @@ struct ThemeLoaderTests {
         #expect(riso.palette.accentAlternate?.hexString == "#0B4BD4")
     }
 
-    @Test("Themes carry no colour that isn't in a file")
+    @Test("Every theme's page colour is fully opaque")
     func everyStockIsOpaque() {
         // The page is paper, never a material. An alpha below 1 on the page
         // colour would let chrome show through it.

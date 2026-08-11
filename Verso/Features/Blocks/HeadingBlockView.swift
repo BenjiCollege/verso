@@ -40,7 +40,6 @@ struct HeadingBlockView: View {
                 .frame(minWidth: Layout.Space.loose, minHeight: Layout.minimumHitTarget)
                 .contentShape(.rect)
         }
-        .menuStyle(.borderlessButton)
         .accessibilityLabel(Text("Heading level"))
         .accessibilityValue(Text(payload.wrappedValue.level.displayName))
     }

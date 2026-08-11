@@ -39,13 +39,9 @@ struct ListBlockView: View {
             .versoText(.body)
             .foregroundStyle(theme.ink)
             .focused($focusedItem, equals: item.id)
-            .onSubmit { insertItem(after: index, payload: payload) }
-            // Emptying a row and submitting removes it, which is how every
-            // list editor on the platform behaves.
-            .onChange(of: focusedItem) { previous, _ in
-                guard previous == item.id, item.text.isEmpty, payload.wrappedValue.items.count > 1 else { return }
-                payload.wrappedValue.items.removeAll { $0.id == item.id }
-            }
+            // Return on a filled row adds the next one; Return on an empty row
+            // removes it, which is how every list editor on the platform behaves.
+            .onSubmit { submit(itemID: item.id, at: index, payload: payload) }
         }
         .accessibilityElement(children: .combine)
     }
@@ -78,6 +74,16 @@ struct ListBlockView: View {
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)
+    }
+
+    private func submit(itemID: UUID, at index: Int, payload: Binding<ListPayload>) {
+        let isEmpty = payload.wrappedValue.items.first { $0.id == itemID }?.text.isEmpty ?? false
+        if isEmpty, payload.wrappedValue.items.count > 1 {
+            payload.wrappedValue.items.removeAll { $0.id == itemID }
+            focusedItem = nil
+        } else {
+            insertItem(after: index, payload: payload)
+        }
     }
 
     private func insertItem(after index: Int, payload: Binding<ListPayload>) {

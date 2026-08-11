@@ -107,18 +107,20 @@ struct ChecklistBlockView: View {
         .accessibilityHint(Text("Double tap to toggle"))
     }
 
+    /// Optional numerics are edited as text rather than through
+    /// `TextField(value:format:)`, because an empty field has to mean "no
+    /// value" and not zero — an unpriced item is not a free one.
     @ViewBuilder
     private func quantityFields(index: Int, payload: Binding<ChecklistPayload>) -> some View {
         HStack(spacing: Layout.Space.snug) {
             if payload.wrappedValue.shows(.quantity) {
-                TextField(
-                    "Qty",
-                    value: payload.items[index].quantity,
-                    format: .number.precision(.fractionLength(0...2))
-                )
+                TextField("Qty", text: Binding(
+                    get: { payload.wrappedValue.items[index].quantity.map { $0.formatted(.number.precision(.fractionLength(0...2))) } ?? "" },
+                    set: { payload.wrappedValue.items[index].quantity = Self.parseDouble($0) }
+                ))
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
-                .frame(width: Layout.Space.vast)
+                .frame(width: Layout.Space.airy)
                 .accessibilityLabel(Text("Quantity"))
             }
 
@@ -132,20 +134,35 @@ struct ChecklistBlockView: View {
             }
 
             if payload.wrappedValue.shows(.price) {
-                TextField(
-                    "Price",
-                    value: payload.items[index].price,
-                    format: .currency(code: currencyCode(for: payload.wrappedValue.items[index]))
-                )
+                TextField("Price", text: Binding(
+                    get: { payload.wrappedValue.items[index].price.map { "\($0)" } ?? "" },
+                    set: { payload.wrappedValue.items[index].price = Self.parseDecimal($0) }
+                ))
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
-                .frame(width: Layout.Space.vast * 1.5)
+                .frame(width: Layout.Space.vast)
                 .accessibilityLabel(Text("Price"))
             }
         }
         .textFieldStyle(.plain)
         .versoText(.metadata)
         .foregroundStyle(theme.inkSecondary)
+    }
+
+    /// Accepts either decimal separator, so a comma keyboard doesn't silently
+    /// discard the entry.
+    private static func normalise(_ text: String) -> String {
+        text.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")
+    }
+
+    private static func parseDouble(_ text: String) -> Double? {
+        let cleaned = normalise(text)
+        return cleaned.isEmpty ? nil : Double(cleaned)
+    }
+
+    private static func parseDecimal(_ text: String) -> Decimal? {
+        let cleaned = normalise(text)
+        return cleaned.isEmpty ? nil : Decimal(string: cleaned)
     }
 
     private func noteField(index: Int, payload: Binding<ChecklistPayload>) -> some View {
@@ -188,9 +205,5 @@ struct ChecklistBlockView: View {
         let target = min(max(index + 1, 0), payload.wrappedValue.items.count)
         payload.wrappedValue.items.insert(item, at: target)
         focusedItem = item.id
-    }
-
-    private func currencyCode(for item: ChecklistPayload.Item) -> String {
-        item.currency ?? Locale.current.currency?.identifier ?? "USD"
     }
 }
