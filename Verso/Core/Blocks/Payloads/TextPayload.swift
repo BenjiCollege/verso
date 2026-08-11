@@ -32,6 +32,20 @@ struct TextPayload: BlockPayload {
         self.init(AttributedString(plain))
     }
 
+    /// Lets a template file write `{"plain": "…"}` and get a real archive, and
+    /// lets a stored payload with a lost archive rebuild one from the mirror.
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let plain = try container.decodeIfPresent(String.self, forKey: .plain) ?? ""
+        let archive = try container.decodeIfPresent(Data.self, forKey: .archive) ?? Data()
+
+        if archive.isEmpty && !plain.isEmpty {
+            self.init(AttributedString(plain))
+        } else {
+            self.init(archive: archive, plain: plain)
+        }
+    }
+
     static func makeDefault() -> TextPayload {
         TextPayload(plain: "")
     }

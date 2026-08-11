@@ -1,0 +1,37 @@
+{
+  "kind": "template",
+  "id": "grocery-run",
+  "name": "Grocery Run",
+  "summary": "Aisle-grouped list with quantities and prices.",
+  "systemImage": "cart",
+  "category": "shopping",
+  "stockID": "ruled",
+  "titleFormat": "Grocery Run — {date}",
+  "blocks": [
+    {
+      "type": "checklist",
+      "payload": {
+        "groupBy": "group",
+        "itemFields": ["quantity", "unit", "price", "note"],
+        "groups": [
+          { "id": "produce", "label": "Produce", "position": 0 },
+          { "id": "bakery", "label": "Bakery", "position": 1 },
+          { "id": "dairy", "label": "Dairy & Eggs", "position": 2 },
+          { "id": "meat", "label": "Meat & Fish", "position": 3 },
+          { "id": "pantry", "label": "Pantry", "position": 4 },
+          { "id": "frozen", "label": "Frozen", "position": 5 },
+          { "id": "household", "label": "Household", "position": 6 }
+        ],
+        "items": []
+      }
+    },
+    {
+      "type": "divider",
+      "payload": { "style": "dots" }
+    },
+    {
+      "type": "text",
+      "payload": { "plain": "" }
+    }
+  ]
+}

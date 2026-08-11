@@ -1,0 +1,14 @@
+{
+  "kind": "template",
+  "id": "blank",
+  "name": "Blank",
+  "summary": "An empty page.",
+  "systemImage": "doc",
+  "category": "general",
+  "blocks": [
+    {
+      "type": "text",
+      "payload": { "plain": "" }
+    }
+  ]
+}
