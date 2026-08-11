@@ -8,11 +8,11 @@ state of the build.
 
 ---
 
-## Status: Phase 1 complete, not yet compiled
+## Status: Phases 1–2 complete, not yet compiled
 
-Phase 1 (Foundation) is written in full — all nine numbered steps. It has
-**never been compiled, run, or checked against the iOS 26 SDK**, because it was
-authored on Windows 11 with no Xcode, no Swift toolchain, and no simulator
+Phase 1 (Foundation) and Phase 2 (Editor) are written in full. Neither has
+**ever been compiled, run, or checked against the iOS 26 SDK**, because they
+were authored on Windows 11 with no Xcode, no Swift toolchain, and no simulator
 available.
 
 Everything below is therefore written from knowledge of the frameworks rather
@@ -53,32 +53,58 @@ are ordered by how much of the build they would block.
 | `Image(decorative:scale:)` + `.resizable(resizingMode: .tile)` | Grain tiling. |
 | `count(where:)`, `Locale.current.currency` | Small standard-library and Foundation calls. |
 
-### Known Phase 1 limitations
+Phase 2 adds a second, larger cluster of unverified surface. In rough order of
+how much would break if it is wrong:
+
+| Area | What to verify |
+|---|---|
+| `UITextView(usingTextLayoutManager: true)` inherited by `VersoTextView` | `VersoTextView.make()` deliberately declares no initialiser so this one is inherited. If a subclass initialiser creeps in, TextKit 1 takes over silently and the fragment rendering simply never runs. |
+| `NSTextLayoutFragment` subclassing | `init(textElement:range:)`, `textLineFragments`, and whether `typographicBounds` is fragment-relative as assumed in `PageTextLayoutFragment.drawRules`. |
+| `NSTextLayoutManagerDelegate` isolation | `PageLayoutDelegate.snapshot` is `nonisolated(unsafe)` precisely because this is unknown. If the protocol turns out to be `@MainActor`, drop the annotation. |
+| `NSTextLayoutManager.setRenderingAttributes(_:for:)` / `invalidateRenderingAttributes(for:)` | Focus Mode dimming. Also `NSTextContentManager.location(_:offsetBy:)`, used to bridge `NSRange` to `NSTextRange`. |
+| `ScrollPosition.scrollTo(y:)` and `onScrollGeometryChange` | iOS 18 scroll APIs; typewriter scroll depends on both. |
+| `onGeometryChange(for:of:action:)` | Reports each text block's frame in the page coordinate space. |
+| `nonisolated init()` on `@MainActor @Observable` | `TextEditingSession`, so the environment key can build a default. |
+| `@ModelActor` on `LinkIndexBuilder` | Generated `init(modelContainer:)` and background-context fetching. |
+
+### Known limitations
 
 Deliberate, not oversights:
 
-- **Text editing is a SwiftUI `TextField`.** Phase 2 replaces it with a
-  TextKit 2 `UITextView`. Until then an edit rebuilds the attributed archive
-  from plain text — harmless, because there is no formatting UI yet.
-- **Stock rules do not scroll with the text.** They are drawn behind the list.
-  Phase 2 moves them into `NSTextLayoutFragment` rendering, which is where they
-  belong.
-- **Every keystroke re-encodes the block payload.** Correct but chattier than it
-  needs to be; coalescing belongs with the Phase 2 editor.
 - **No app icon artwork.** `AppIcon.appiconset` is declared but empty.
 - **Sync is untested.** §9 requires verification across two simulators on one
   iCloud account. That needs a Mac.
+- **The backlink index is in memory, not persisted.** Links live inside archived
+  text, which SwiftData cannot form a predicate against. It builds on first use
+  rather than at launch, so it costs nothing against the 400ms budget, and every
+  later edit patches it incrementally. If a library ever grows large enough for
+  the first build to be felt, the fix is a persisted `NoteLink` model — a schema
+  change, and therefore yours to approve.
+- **Headings and list items are still plain `TextField`s.** Only `text` blocks
+  are rich. Nothing in §5 gives them inline marks.
 
 ### Deviations from the specification
 
-Two, both minor, both flagged rather than silently taken:
+All flagged rather than silently taken:
 
 1. **`Motion` tokens are computed properties, not `static let`.** Functionally
    identical, and avoids depending on whether `SwiftUI.Animation` is `Sendable`
    on a given SDK.
 2. **Themes carry an optional `accentAlternate`.** §6 lists a second accent for
-   `riso` (`#0B4BD4`) with no column for it. It is stored rather than dropped;
-   nothing in Phase 1 reads it.
+   `riso` (`#0B4BD4`) with no column for it. It is stored rather than dropped.
+3. **Grain is a fixed page texture, not per-fragment.** §7 groups grain with the
+   rules under `NSTextLayoutFragment` rendering. Rules *are* per-fragment, which
+   is what puts them on real baselines. Grain is not: drawing it per fragment
+   would texture only where there are words, leaving the margins and everything
+   past the last block bare.
+4. **Block reordering moved into its own sheet.** Typewriter scroll needs an
+   exact content offset, and `List` will not surrender one, so the page became a
+   `ScrollView`. Reordering kept `List` — and with it drag-and-drop and
+   VoiceOver — on a screen built for it.
+5. **A `[[wiki link]]` is followed from the formatting bar, not by tapping it.**
+   In an editable text view a tap places the caret, which is correct; you cannot
+   edit text you cannot click into. When the caret sits inside a link, an open
+   action appears in the bar instead.
 
 ---
 
@@ -108,6 +134,10 @@ Adding a theme or a paper stock is likewise one JSON file in
 | `MotionResolverTests` | Every token and every reveal style has a reduce-motion path |
 | `TemplateInstantiationTests` | Both templates, persistence, failure modes, the zero-Swift guarantee |
 | `SchemaValidityTests` | CloudKit constraints, cascade deletes, block position density, tag dedupe, metric series queries |
+| `InlineStyleTests` | Marks survive archiving, presentation never does, toggling is reversible and independent, a mixed selection reports no common mark |
+| `WikiLinkTests` | Link and draft parsing, malformed brackets, UTF-16 offsets |
+| `TypewriterScrollerTests` | Anchoring, the jitter deadband, clamping at both ends, the reserved bottom inset |
+| `LinkGraphTests` / `LinkIndexTests` | Both directions stay consistent, links resolve by title and by stored id, a renamed target keeps its edge, unresolved titles are kept |
 
 Still owed by §9: formula evaluation, geofence budget manager, and vault
 encrypt/decrypt — those arrive with Phases 3, 4 and 8.

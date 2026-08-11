@@ -32,6 +32,12 @@ struct LibraryView: View {
                 }
             }
             .background(theme.stock.ignoresSafeArea())
+            // Registered once, here. The editor pushes with NavigationLink(value:)
+            // rather than declaring its own destination, which would make the
+            // view's type infinitely recursive the moment a note links to a note.
+            .navigationDestination(for: Note.self) { note in
+                NoteEditorView(note: note)
+            }
             .navigationTitle("Verso")
             .toolbar { toolbarContent }
             .sheet(isPresented: $isChoosingTemplate) {
@@ -74,9 +80,7 @@ struct LibraryView: View {
     }
 
     private func row(_ note: Note) -> some View {
-        NavigationLink {
-            NoteEditorView(note: note)
-        } label: {
+        NavigationLink(value: note) {
             NoteRowView(note: note)
         }
         .listRowBackground(theme.stock)

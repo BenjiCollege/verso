@@ -43,6 +43,15 @@ struct SettingsView: View {
                     }
                 }
 
+                Section("Editing") {
+                    Toggle(isOn: $appearance.isTypewriterEnabled) {
+                        Text("Typewriter Scroll")
+                    }
+                    Text("Keeps the line you're writing at a fixed place on screen instead of letting it drift to the bottom.")
+                        .versoText(.chromeCaption)
+                        .foregroundStyle(theme.inkSecondary)
+                }
+
                 Section("iCloud") {
                     LabeledContent("Sync") {
                         Text(persistenceMode.summary)

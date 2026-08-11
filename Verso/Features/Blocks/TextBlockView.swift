@@ -1,32 +1,54 @@
 import SwiftUI
 
-/// A paragraph.
+/// A paragraph, edited in TextKit 2.
 ///
-/// Phase 1 edits plain text through a SwiftUI `TextField`. Phase 2 replaces the
-/// field with a TextKit 2 `UITextView`, which is what typewriter scroll,
-/// per-fragment rule rendering and per-glyph reveal require. Until then, an
-/// edit rebuilds the archive from the plain string — there is no formatting UI
-/// yet, so there are no attributes to lose.
+/// The text view does not scroll — it sizes to its content inside the note's
+/// single scroll view. That is what makes typewriter scroll a property of the
+/// note rather than of one paragraph, and it is why this view has to report its
+/// own frame in the page's coordinate space so a caret rect can be translated
+/// outward.
 struct TextBlockView: View {
     let block: Block
 
     @Environment(\.theme) private var theme
+    @Environment(\.stock) private var stock
+    @Environment(\.textEditingSession) private var session
+    @Environment(\.editorFocusMode) private var isFocusModeActive
+    @Environment(\.caretSuppressed) private var isCaretSuppressed
+
+    @ScaledMetric(relativeTo: .body) private var bodySize: CGFloat = Typography.Role.body.pointSize
+
+    @State private var frameInPage: CGRect = .zero
 
     var body: some View {
         BlockPayloadEditor(block: block) { (payload: Binding<TextPayload>) in
-            TextField(
-                "Body text",
-                text: Binding(
-                    get: { payload.wrappedValue.plain },
-                    set: { payload.wrappedValue = TextPayload(plain: $0) }
-                ),
-                prompt: Text("Write…").foregroundStyle(theme.inkTertiary),
-                axis: .vertical
+            RichTextEditor(
+                blockID: block.id,
+                payload: payload,
+                theme: theme,
+                stock: stock,
+                bodySize: bodySize,
+                session: session,
+                isFocusModeActive: isFocusModeActive,
+                isCaretSuppressed: isCaretSuppressed,
+                caretRectInPage: { caret in
+                    caret.offsetBy(dx: frameInPage.minX, dy: frameInPage.minY)
+                }
             )
-            .textFieldStyle(.plain)
-            .versoText(.body)
-            .foregroundStyle(theme.ink)
+            .onGeometryChange(for: CGRect.self) { proxy in
+                proxy.frame(in: .named(NoteEditorView.pageCoordinateSpace))
+            } action: { newValue in
+                frameInPage = newValue
+            }
             .accessibilityLabel(Text("Text block"))
         }
     }
+}
+
+extension EnvironmentValues {
+    /// Focus Mode dims everything but the paragraph being written.
+    @Entry var editorFocusMode: Bool = false
+
+    /// Hides the caret while the page is moving under it.
+    @Entry var caretSuppressed: Bool = false
 }
