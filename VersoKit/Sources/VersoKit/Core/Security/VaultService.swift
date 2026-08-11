@@ -9,7 +9,7 @@ import SwiftData
 @Observable
 final class VaultService {
 
-    static let logger = Logger(subsystem: "com.verso.notes", category: "vault")
+    nonisolated static let logger = Logger(subsystem: "com.verso.notes", category: "vault")
 
     enum State: Equatable, Sendable {
         /// No vault has been created on this device or any other.

@@ -14,7 +14,7 @@ import UniformTypeIdentifiers
 @Observable
 final class SpotlightIndexer {
 
-    static let logger = Logger(subsystem: "com.verso.notes", category: "spotlight")
+    nonisolated static let logger = Logger(subsystem: "com.verso.notes", category: "spotlight")
     static let domain = "com.verso.notes.notes"
 
     private(set) var lastIndexed: Date?

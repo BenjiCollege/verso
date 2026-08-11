@@ -47,7 +47,7 @@ enum LocationAvailability: Hashable, Sendable {
 @Observable
 final class LocationAuthority: NSObject, CLLocationManagerDelegate {
 
-    static let logger = Logger(subsystem: "com.verso.notes", category: "location")
+    nonisolated static let logger = Logger(subsystem: "com.verso.notes", category: "location")
 
     private(set) var availability: LocationAvailability = .notDetermined
     private(set) var userLocation: Coordinate?

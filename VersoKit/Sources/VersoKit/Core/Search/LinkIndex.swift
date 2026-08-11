@@ -61,7 +61,7 @@ struct LinkGraph: Sendable, Equatable {
 @ModelActor
 actor LinkIndexBuilder {
 
-    static let logger = Logger(subsystem: "com.verso.notes", category: "links")
+    nonisolated static let logger = Logger(subsystem: "com.verso.notes", category: "links")
 
     func build() -> LinkGraph {
         var graph = LinkGraph()

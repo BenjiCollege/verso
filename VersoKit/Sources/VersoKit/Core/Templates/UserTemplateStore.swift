@@ -14,7 +14,7 @@ import OSLog
 @Observable
 final class UserTemplateStore {
 
-    static let logger = Logger(subsystem: "com.verso.notes", category: "templates")
+    nonisolated static let logger = Logger(subsystem: "com.verso.notes", category: "templates")
     static let fileExtension = "versotemplate"
 
     private(set) var templates: [Template] = []

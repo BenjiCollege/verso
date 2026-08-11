@@ -14,7 +14,7 @@ import Speech
 @Observable
 final class SpeechTranscription {
 
-    static let logger = Logger(subsystem: "com.verso.notes", category: "speech")
+    nonisolated static let logger = Logger(subsystem: "com.verso.notes", category: "speech")
 
     enum State: Equatable, Sendable {
         case idle

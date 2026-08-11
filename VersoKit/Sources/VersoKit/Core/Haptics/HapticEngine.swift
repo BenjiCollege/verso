@@ -16,7 +16,7 @@ import UIKit
 @Observable
 final class HapticEngine {
 
-    static let logger = Logger(subsystem: "com.verso.notes", category: "haptics")
+    nonisolated static let logger = Logger(subsystem: "com.verso.notes", category: "haptics")
 
     /// Named for the moment, not the waveform. The AHAP file is the design.
     ///

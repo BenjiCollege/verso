@@ -13,7 +13,7 @@ import SwiftData
 @Observable
 final class RecordingSession {
 
-    static let logger = Logger(subsystem: "com.verso.notes", category: "audio")
+    nonisolated static let logger = Logger(subsystem: "com.verso.notes", category: "audio")
 
     enum State: Equatable, Sendable {
         case idle

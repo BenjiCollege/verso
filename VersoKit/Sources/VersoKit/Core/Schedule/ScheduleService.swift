@@ -42,7 +42,7 @@ actor ScheduleSource {
 @Observable
 final class ScheduleService {
 
-    static let logger = Logger(subsystem: "com.verso.notes", category: "schedule")
+    nonisolated static let logger = Logger(subsystem: "com.verso.notes", category: "schedule")
 
     private(set) var scheduledCount = 0
     private(set) var droppedCount = 0

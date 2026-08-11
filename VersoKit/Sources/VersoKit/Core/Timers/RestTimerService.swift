@@ -41,7 +41,7 @@ struct RestTimerState: Codable, Hashable, Sendable {
 @Observable
 final class RestTimerService {
 
-    static let logger = Logger(subsystem: "com.verso.notes", category: "timers")
+    nonisolated static let logger = Logger(subsystem: "com.verso.notes", category: "timers")
     private static let storageKey = "timers.running"
     private static let notificationPrefix = "verso.timer."
 

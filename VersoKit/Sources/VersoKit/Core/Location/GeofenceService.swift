@@ -13,7 +13,7 @@ import UserNotifications
 @Observable
 final class GeofenceService {
 
-    static let logger = Logger(subsystem: "com.verso.notes", category: "geofence")
+    nonisolated static let logger = Logger(subsystem: "com.verso.notes", category: "geofence")
     private static let monitorName = "VersoPlaces"
     private static let notificationPrefix = "verso.place."
 
