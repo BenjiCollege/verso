@@ -92,7 +92,7 @@ enum Printed {
             let payload = try? block.decoded(as: TimerPayload.self)
             LabelledValue(
                 label: payload?.label ?? "",
-                value: payload?.timerClockText ?? "",
+                value: payload?.duration.timerClockText ?? "",
                 unit: ""
             )
         }
@@ -174,7 +174,7 @@ enum Printed {
                 Image(systemName: "waveform")
                     .foregroundStyle(theme.accent)
                 Text("Audio recording")
-                    .versoText(.caption)
+                    .versoText(.footnote)
                     .foregroundStyle(theme.inkSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
