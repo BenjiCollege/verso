@@ -1,6 +1,7 @@
 # App Store submission checklist
 
-§10 of [CLAUDE.md](CLAUDE.md) says this blocks release. Items marked **done in
+§10 of the specification — `CLAUDE.md`, which is not in this repository — says
+this blocks release. Items marked **done in
 the repo** are written and committed; items marked **needs a Mac** or **needs
 you** cannot be produced from Windows, and are listed with exactly what remains.
 
