@@ -66,10 +66,16 @@ public struct VersoScene: Scene {
                     }
                 }
                 .onChange(of: scenePhase) { _, phase in
-                    // Leaving the app closes the vault. Coming back should ask
-                    // again; a vault that stays open in your pocket is a Face ID
-                    // gate wearing a costume.
-                    if phase == .background { vault.lock() }
+                    // Leaving the app starts the vault's clock rather than
+                    // closing it outright. Long enough away and it locks; a
+                    // glance at something else and it does not. The privacy
+                    // screen covers the gap either way, so nothing is on show
+                    // in the app switcher during the grace.
+                    switch phase {
+                    case .active: vault.applicationDidBecomeActive()
+                    case .inactive, .background: vault.applicationWillResign()
+                    @unknown default: vault.lock()
+                    }
 
                     // The widget's own timeline refreshes half-hourly, which is
                     // the right budget for a clock and the wrong one for notes:

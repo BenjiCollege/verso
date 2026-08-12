@@ -6,6 +6,7 @@ struct LibraryView: View {
     @Environment(\.theme) private var theme
     @Environment(\.motion) private var motion
     @Environment(HapticEngine.self) private var haptics
+    @Environment(AppearanceStore.self) private var appearance
     @Environment(NavigationRequest.self) private var navigation
 
     @State private var path = NavigationPath()
@@ -71,6 +72,17 @@ struct LibraryView: View {
             .onChange(of: notes.count) { _, _ in
                 openPendingNote()
             }
+            // First launch opens on the gallery rather than on an empty list and
+            // a plus, which describes nothing. Gated on the library actually
+            // being empty as well as on the flag, so restoring from a backup —
+            // where the notes arrive a moment after the view does — does not
+            // greet someone with a gallery they have no use for.
+            .task {
+                guard !appearance.hasSeenGallery else { return }
+                appearance.hasSeenGallery = true
+                guard notes.isEmpty else { return }
+                isChoosingTemplate = true
+            }
             // Opening a template file launches the app, so this is always the
             // cold-launch case. The gallery is the confirmation: the import has
             // already happened, and it is sitting there under the user's own.
@@ -127,6 +139,23 @@ struct LibraryView: View {
         }
         .listRowBackground(theme.stock)
         .swipeActions(edge: .trailing) {
+            Button(role: .destructive) {
+                trash(note)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+        .contextMenu {
+            Button {
+                duplicate(note)
+            } label: {
+                Label("Duplicate", systemImage: "plus.square.on.square")
+            }
+            Button {
+                motion.run(.settle) { note.isPinned.toggle() }
+            } label: {
+                Label(note.isPinned ? "Unpin" : "Pin", systemImage: note.isPinned ? "pin.slash" : "pin")
+            }
             Button(role: .destructive) {
                 trash(note)
             } label: {
@@ -262,6 +291,14 @@ struct LibraryView: View {
         else { return }
         path.append(note)
         navigation.clear()
+    }
+
+    /// Copies a note and opens the copy, because the reason to duplicate one is
+    /// to start changing it.
+    private func duplicate(_ note: Note) {
+        let copy = note.duplicated(into: context, titleSuffix: String(localized: "Copy"))
+        haptics.play(.checklistCheck)
+        path.append(copy)
     }
 
     private func createNote(from template: Template) {

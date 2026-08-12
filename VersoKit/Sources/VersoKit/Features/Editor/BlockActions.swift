@@ -41,6 +41,38 @@ final class BlockActions {
         note.touch()
     }
 
+    /// One place up or down.
+    ///
+    /// Reordering had its own sheet and nothing else, so moving a single
+    /// paragraph was four steps. The sheet still earns its place for real
+    /// restructuring; this is for the move you make while writing.
+    ///
+    /// - Returns: whether anything moved, so a caller can decline to buzz when
+    ///   the block is already at the end it is being pushed towards.
+    @discardableResult
+    func move(_ block: Block, in note: Note, by offset: Int) -> Bool {
+        let ordered = note.orderedBlocks
+        guard let index = ordered.firstIndex(where: { $0.id == block.id }) else { return false }
+
+        let destination = index + offset
+        guard ordered.indices.contains(destination) else { return false }
+
+        // `moveBlocks` takes SwiftUI's insertion-point convention, where moving
+        // down means naming the index *past* the one being displaced.
+        note.moveBlocks(
+            fromOffsets: IndexSet(integer: index),
+            toOffset: offset > 0 ? destination + 1 : destination
+        )
+        note.touch()
+        return true
+    }
+
+    func canMove(_ block: Block, in note: Note, by offset: Int) -> Bool {
+        let ordered = note.orderedBlocks
+        guard let index = ordered.firstIndex(where: { $0.id == block.id }) else { return false }
+        return ordered.indices.contains(index + offset)
+    }
+
     func delete(_ block: Block, in note: Note, context: ModelContext) {
         recovered = Deleted(
             id: block.id,
@@ -146,10 +178,29 @@ extension View {
     /// menu, which is correct — you cannot edit text you cannot select. The
     /// margins around the block still reach this one.
     func blockActions(
+        canMoveUp: Bool,
+        canMoveDown: Bool,
+        moveUp: @escaping () -> Void,
+        moveDown: @escaping () -> Void,
         duplicate: @escaping () -> Void,
         delete: @escaping () -> Void
     ) -> some View {
         contextMenu {
+            if canMoveUp {
+                Button {
+                    moveUp()
+                } label: {
+                    Label("Move Up", systemImage: "arrow.up")
+                }
+            }
+            if canMoveDown {
+                Button {
+                    moveDown()
+                } label: {
+                    Label("Move Down", systemImage: "arrow.down")
+                }
+            }
+
             Button {
                 duplicate()
             } label: {

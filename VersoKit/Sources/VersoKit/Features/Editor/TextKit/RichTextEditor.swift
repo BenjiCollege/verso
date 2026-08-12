@@ -282,6 +282,8 @@ final class RichTextCoordinator: NSObject, UITextViewDelegate, RichTextCommandTa
 
     // MARK: - RichTextCommandTarget
 
+    var undoManager: UndoManager? { textView?.undoManager }
+
     func toggle(_ style: InlineStyle) {
         guard let textView else { return }
         let selection = textView.selectedRange

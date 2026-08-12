@@ -114,6 +114,41 @@ extension Note {
         assignPositions(ordered)
     }
 
+    /// A copy of this note, blocks and all.
+    ///
+    /// What is deliberately left behind: version history, which belongs to the
+    /// note that lived it; recordings, whose bytes are the largest thing here
+    /// and which a copy has no claim on; and the trashed and pinned flags,
+    /// which describe where a note sits rather than what it is.
+    ///
+    /// Blocks are copied by their bytes, so a block of a locked note stays
+    /// ciphertext and the copy opens with the same vault — a duplicate is never
+    /// a way to get a locked note out from behind the clasp.
+    @discardableResult
+    func duplicated(into context: ModelContext, titleSuffix: String) -> Note {
+        let copy = Note(title: title.isEmpty ? titleSuffix : "\(title) \(titleSuffix)")
+        copy.templateID = templateID
+        copy.themeID = themeID
+        copy.stockID = stockID
+        copy.revealStyleID = revealStyleID
+        copy.isLocked = isLocked
+        copy.isHidden = isHidden
+        copy.folder = folder
+        copy.tags = tags
+        context.insert(copy)
+
+        for block in orderedBlocks {
+            let blockCopy = Block(
+                position: block.position,
+                typeRaw: block.typeRaw,
+                payload: block.payload
+            )
+            context.insert(blockCopy)
+            copy.append(blockCopy)
+        }
+        return copy
+    }
+
     func touch(_ date: Date = Date()) {
         modifiedAt = date
     }

@@ -39,6 +39,7 @@ final class AppearanceStore {
         static let hapticsEnabled = "editor.haptics"
         static let autocorrect = "editor.autocorrect"
         static let focusMode = "editor.focusMode"
+        static let hasSeenGallery = "onboarding.gallerySeen"
     }
 
     private let defaults: UserDefaults
@@ -99,6 +100,14 @@ final class AppearanceStore {
     /// preference rather than a per-session toggle, so it survives relaunch.
     var isFocusModeEnabled: Bool { didSet { defaults.set(isFocusModeEnabled, forKey: Key.focusMode) } }
 
+    /// Whether the template gallery has been shown unprompted.
+    ///
+    /// A first launch used to be an empty list and a `+`, which describes
+    /// nothing. The gallery is the best answer the app has to "what is this
+    /// for", and it was one level down. Shown once, and never again in the way
+    /// that would make it a nag.
+    var hasSeenGallery: Bool { didSet { defaults.set(hasSeenGallery, forKey: Key.hasSeenGallery) } }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         self.isTypewriterEnabled = defaults.bool(forKey: Key.typewriter)
@@ -120,6 +129,7 @@ final class AppearanceStore {
         self.isHapticsEnabled = defaults.object(forKey: Key.hapticsEnabled) as? Bool ?? true
         self.isAutocorrectEnabled = defaults.object(forKey: Key.autocorrect) as? Bool ?? true
         self.isFocusModeEnabled = defaults.bool(forKey: Key.focusMode)
+        self.hasSeenGallery = defaults.bool(forKey: Key.hasSeenGallery)
         self.mode = Mode(rawValue: defaults.string(forKey: Key.mode) ?? "") ?? .followSystem
         self.lightThemeID = defaults.string(forKey: Key.lightTheme) ?? ThemeCatalog.defaultLightThemeID
         self.darkThemeID = defaults.string(forKey: Key.darkTheme) ?? ThemeCatalog.defaultDarkThemeID

@@ -130,7 +130,43 @@ final class VaultService {
     func lock() {
         VaultKeyring.shared.lock()
         isViewingLockedNote = false
+        leftAt = nil
         refreshState()
+    }
+
+    // MARK: - Leaving and coming back
+
+    /// How long the vault survives the app going away.
+    ///
+    /// Locking the instant the app backgrounds is correct against someone
+    /// picking up the phone, and wrong against every other reason you leave:
+    /// checking a date, copying an address, answering a message. A Face ID
+    /// prompt for each of those is how a feature gets turned off, and a vault
+    /// nobody turns on protects nothing.
+    ///
+    /// A minute is short enough that the phone has not changed hands and long
+    /// enough to cover an errand. It is deliberately not a setting — a security
+    /// window is not something to make people guess at.
+    static let graceWindow: TimeInterval = 60
+
+    private var leftAt: Date?
+
+    /// Called when the app stops being frontmost. The vault stays open, on the
+    /// clock.
+    func applicationWillResign(now: Date = Date()) {
+        guard VaultKeyring.shared.isUnlocked else { return }
+        leftAt = now
+    }
+
+    /// Called on return. Locks if the app was away longer than the grace, and
+    /// the privacy screen has covered the gap either way.
+    func applicationDidBecomeActive(now: Date = Date()) {
+        guard let leftAt else { return }
+        if now.timeIntervalSince(leftAt) > Self.graceWindow {
+            lock()
+        } else {
+            self.leftAt = nil
+        }
     }
 
     // MARK: - Notes

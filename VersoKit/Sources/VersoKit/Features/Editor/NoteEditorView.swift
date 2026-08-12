@@ -241,7 +241,18 @@ struct NoteEditorView: View {
                             .opacity(dimming(for: block))
                             .animation(motion.animation(.settle), value: isChromeHidden)
                             .animation(motion.animation(.settle), value: session.activeBlockID)
-                            .blockActions {
+                            .blockActions(
+                                canMoveUp: blockActions.canMove(block, in: note, by: -1),
+                                canMoveDown: blockActions.canMove(block, in: note, by: 1)
+                            ) {
+                                withAnimation(motion.animation(.settle)) {
+                                    blockActions.move(block, in: note, by: -1)
+                                }
+                            } moveDown: {
+                                withAnimation(motion.animation(.settle)) {
+                                    blockActions.move(block, in: note, by: 1)
+                                }
+                            } duplicate: {
                                 blockActions.duplicate(block, in: note, context: context)
                                 haptics.play(.checklistCheck)
                             } delete: {

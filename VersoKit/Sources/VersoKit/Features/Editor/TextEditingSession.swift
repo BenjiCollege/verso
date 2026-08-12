@@ -11,6 +11,14 @@ protocol RichTextCommandTarget: AnyObject {
     func startLink()
     func completeLink(title: String, noteID: UUID?)
     func dismissLinkDraft()
+
+    /// The text view's own undo stack.
+    ///
+    /// `UITextView` keeps one and registers typing on it, but nothing was
+    /// reachable from SwiftUI to drive it, so the only way to undo was the shake
+    /// gesture — which is undiscoverable, and unusable if you have Shake to Undo
+    /// turned off, which many people do precisely because it fires by accident.
+    var undoManager: UndoManager? { get }
 }
 
 @MainActor
@@ -80,6 +88,14 @@ final class TextEditingSession {
     func toggle(_ style: InlineStyle) {
         target?.toggle(style)
     }
+
+    // MARK: - Undo
+
+    var canUndo: Bool { target?.undoManager?.canUndo ?? false }
+    var canRedo: Bool { target?.undoManager?.canRedo ?? false }
+
+    func undo() { target?.undoManager?.undo() }
+    func redo() { target?.undoManager?.redo() }
 
     func startLink() {
         target?.startLink()

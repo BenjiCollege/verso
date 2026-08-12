@@ -18,6 +18,28 @@ struct FormattingToolbar: View {
 
     var body: some View {
         HStack(spacing: Layout.Space.tight) {
+            // Undo first, on the left, where a hand already is. The text view
+            // has kept an undo stack all along; nothing was reachable to drive
+            // it, so the only way in was the shake gesture — undiscoverable, and
+            // switched off by many people precisely because it fires by mistake.
+            Button {
+                session.undo()
+            } label: {
+                Image(systemName: "arrow.uturn.backward")
+            }
+            .disabled(!session.canUndo)
+            .accessibilityLabel(Text("Undo"))
+
+            Button {
+                session.redo()
+            } label: {
+                Image(systemName: "arrow.uturn.forward")
+            }
+            .disabled(!session.canRedo)
+            .accessibilityLabel(Text("Redo"))
+
+            Divider()
+
             ForEach(InlineStyle.all, id: \.rawValue) { style in
                 styleButton(style)
             }
