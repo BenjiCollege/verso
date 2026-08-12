@@ -6,25 +6,32 @@ import SwiftUI
 /// exactly one file. Decoding still goes through `BlockRegistry`; this only
 /// chooses which editor to show. A block type the build cannot render falls
 /// through to `UnsupportedBlockView` rather than vanishing from the note.
+///
+/// The `presentation` chooses between the editor and a flat drawing of the same
+/// block for export. Only the types that need it differ — see `Printed` for why
+/// reusing the editors crashed PDF export rather than merely looking wrong.
 struct BlockRenderer: View {
     let block: Block
+    var presentation: BlockPresentation = .interactive
+
+    private var isPrinted: Bool { presentation == .printed }
 
     var body: some View {
         switch block.type {
         case .text:
-            TextBlockView(block: block)
+            if isPrinted { Printed.TextBlock(block: block) } else { TextBlockView(block: block) }
         case .heading:
             HeadingBlockView(block: block)
         case .checklist:
-            ChecklistBlockView(block: block)
+            if isPrinted { Printed.ChecklistBlock(block: block) } else { ChecklistBlockView(block: block) }
         case .list:
             ListBlockView(block: block)
         case .divider:
             DividerBlockView(block: block)
         case .metric:
-            MetricBlockView(block: block)
+            if isPrinted { Printed.MetricBlock(block: block) } else { MetricBlockView(block: block) }
         case .timer:
-            TimerBlockView(block: block)
+            if isPrinted { Printed.TimerBlock(block: block) } else { TimerBlockView(block: block) }
         case .formula:
             FormulaBlockView(block: block)
         case .progress:
@@ -34,13 +41,13 @@ struct BlockRenderer: View {
         case .table:
             TableBlockView(block: block)
         case .schedule:
-            ScheduleBlockView(block: block)
+            if isPrinted { Printed.ScheduleBlock(block: block) } else { ScheduleBlockView(block: block) }
         case .place:
-            PlaceBlockView(block: block)
+            if isPrinted { Printed.PlaceBlock(block: block) } else { PlaceBlockView(block: block) }
         case .sketch:
-            SketchBlockView(block: block)
+            if isPrinted { Printed.SketchBlock(block: block) } else { SketchBlockView(block: block) }
         case .audio:
-            AudioBlockView(block: block)
+            if isPrinted { Printed.AudioBlock(block: block) } else { AudioBlockView(block: block) }
         case .attachment:
             AttachmentBlockView(block: block)
         case .some(let type):

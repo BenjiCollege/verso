@@ -14,6 +14,7 @@ enum NoteExporter {
     enum Format: String, CaseIterable, Identifiable, Sendable {
         case markdown
         case pdf
+        case image
         case shareCard
 
         var id: String { rawValue }
@@ -22,6 +23,7 @@ enum NoteExporter {
             switch self {
             case .markdown: "Markdown"
             case .pdf: "PDF"
+            case .image: "Image"
             case .shareCard: "Animated Card"
             }
         }
@@ -30,6 +32,7 @@ enum NoteExporter {
             switch self {
             case .markdown: "Plain text with structure. Opens anywhere."
             case .pdf: "The page as it looks, in your theme."
+            case .image: "One picture of the page. Posts anywhere."
             case .shareCard: "A short animation of the note revealing itself."
             }
         }
@@ -38,6 +41,7 @@ enum NoteExporter {
             switch self {
             case .markdown: "doc.plaintext"
             case .pdf: "doc.richtext"
+            case .image: "photo"
             case .shareCard: "sparkles.rectangle.stack"
             }
         }
@@ -46,9 +50,38 @@ enum NoteExporter {
             switch self {
             case .markdown: "md"
             case .pdf: "pdf"
+            case .image: "png"
             case .shareCard: "gif"
             }
         }
+    }
+
+    // MARK: - Image
+
+    /// The whole note as one PNG.
+    ///
+    /// Not paginated: a picture that stops at A4 and silently drops the rest is
+    /// worse than a tall one. Messaging apps and social posts scale it; a PDF is
+    /// the answer when pages matter.
+    @MainActor
+    static func image(
+        for note: Note,
+        theme: Theme,
+        stock: Stock,
+        width: CGFloat = 1_080,
+        scale: CGFloat = 2
+    ) -> Data? {
+        let content = ExportPage(note: note, width: width)
+            .versoTheme(theme, stock: stock)
+            .environment(\.themeCatalog, ThemeCatalog.shared)
+            .frame(width: width)
+
+        let renderer = ImageRenderer(content: content)
+        renderer.proposedSize = ProposedViewSize(width: width, height: nil)
+        renderer.scale = scale
+        renderer.isOpaque = true
+
+        return renderer.uiImage?.pngData()
     }
 
     // MARK: - Markdown
@@ -125,7 +158,13 @@ enum NoteExporter {
             // The content is one tall column; it is sliced into pages by
             // translating the context, which keeps text vector rather than
             // rasterising each page.
-            let pageCount = max(1, Int(ceil(size.height / pageSize.height)))
+            //
+            // `Int(_:)` on a non-finite Double is a trap, not a conversion, and
+            // an unbounded child makes `size.height` infinite. The ceiling is
+            // arbitrary but has to exist: a note cannot be a thousand pages, and
+            // crashing the share sheet is a worse answer than a truncated PDF.
+            guard size.height.isFinite, size.height > 0 else { return }
+            let pageCount = min(1_000, max(1, Int(ceil(size.height / pageSize.height))))
             for page in 0..<pageCount {
                 context.beginPDFPage(nil)
                 context.saveGState()
@@ -226,9 +265,7 @@ private struct ExportPage: View {
             }
 
             ForEach(note.orderedBlocks) { block in
-                BlockRenderer(block: block)
-                    .disabled(true)
-                    .allowsHitTesting(false)
+                BlockRenderer(block: block, presentation: .printed)
             }
         }
         .padding(Layout.Space.vast)
@@ -260,7 +297,7 @@ private struct ShareCard: View {
                 }
 
                 ForEach(Array(note.orderedBlocks.prefix(8).enumerated()), id: \.element.id) { index, block in
-                    BlockRenderer(block: block)
+                    BlockRenderer(block: block, presentation: .printed)
                         .disabled(true)
                         .allowsHitTesting(false)
                         .revealed(plan: plan, index: index + 1, elapsed: elapsed)

@@ -130,6 +130,8 @@ struct ExportSheet: View {
                     data = Data(NoteExporter.markdown(for: note).utf8)
                 case .pdf:
                     data = NoteExporter.pdf(for: note, theme: noteTheme, stock: noteStock)
+                case .image:
+                    data = NoteExporter.image(for: note, theme: noteTheme, stock: noteStock)
                 case .shareCard:
                     data = NoteExporter.shareCard(
                         for: note,
