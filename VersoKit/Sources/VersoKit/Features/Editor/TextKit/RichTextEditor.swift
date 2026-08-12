@@ -20,6 +20,8 @@ struct RichTextEditor: UIViewRepresentable {
     /// which is display-only: no re-layout, and nothing written to the note.
     let isFocusModeActive: Bool
     let isCaretSuppressed: Bool
+    /// The preference, applied to the one text view it can possibly mean.
+    var isAutocorrectEnabled: Bool = true
     /// Converts a caret rect from the text view's space into the page's.
     let caretRectInPage: (CGRect) -> CGRect
     /// Reports the caret's character offset, for the audio sync map.
@@ -37,13 +39,29 @@ struct RichTextEditor: UIViewRepresentable {
         textView.setContentCompressionResistancePriority(.required, for: .vertical)
 
         context.coordinator.attach(textView)
+        applyInputPreferences(to: textView)
         context.coordinator.applyRendering(to: textView, animated: false)
         return textView
+    }
+
+    /// Autocorrect and its companions travel together: someone who turns
+    /// correction off did not ask to keep automatic capitals fixing their
+    /// lowercase deliberate.
+    private func applyInputPreferences(to textView: VersoTextView) {
+        let mode: UITextAutocorrectionType = isAutocorrectEnabled ? .yes : .no
+        guard textView.autocorrectionType != mode else { return }
+        textView.autocorrectionType = mode
+        textView.spellCheckingType = isAutocorrectEnabled ? .yes : .no
+        textView.autocapitalizationType = isAutocorrectEnabled ? .sentences : .none
+        // The keyboard caches these, so it has to be told to read them again —
+        // otherwise the change lands on the next paragraph and not this one.
+        if textView.isFirstResponder { textView.reloadInputViews() }
     }
 
     func updateUIView(_ textView: VersoTextView, context: Context) {
         context.coordinator.parent = self
         textView.isCaretSuppressed = isCaretSuppressed
+        applyInputPreferences(to: textView)
         context.coordinator.applyRendering(to: textView, animated: true)
     }
 

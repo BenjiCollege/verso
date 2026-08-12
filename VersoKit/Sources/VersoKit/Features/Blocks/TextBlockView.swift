@@ -16,8 +16,19 @@ struct TextBlockView: View {
     @Environment(\.editorFocusMode) private var isFocusModeActive
     @Environment(\.caretSuppressed) private var isCaretSuppressed
     @Environment(RecordingSession.self) private var recording
+    @Environment(AppearanceStore.self) private var appearance
+
+    @Environment(\.readingPreferences) private var reading
 
     @ScaledMetric(relativeTo: .body) private var bodySize: CGFloat = Typography.Role.body.pointSize
+
+    /// The reader's scale, applied here as well as in `versoText`.
+    ///
+    /// A paragraph is TextKit 2 inside a `UITextView`, so it never passes
+    /// through the SwiftUI text modifier that honours this — which meant the
+    /// text size control moved every heading and caption in the app and left
+    /// the actual writing alone.
+    private var scaledBodySize: CGFloat { bodySize * reading.textScale }
 
     @State private var frameInPage: CGRect = .zero
 
@@ -28,10 +39,11 @@ struct TextBlockView: View {
                 payload: payload,
                 theme: theme,
                 stock: stock,
-                bodySize: bodySize,
+                bodySize: scaledBodySize,
                 session: session,
                 isFocusModeActive: isFocusModeActive,
                 isCaretSuppressed: isCaretSuppressed,
+                isAutocorrectEnabled: appearance.isAutocorrectEnabled,
                 caretRectInPage: { caret in
                     caret.offsetBy(dx: frameInPage.minX, dy: frameInPage.minY)
                 },

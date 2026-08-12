@@ -136,7 +136,9 @@ struct ReadModeView: View {
             RevealingText(
                 semantic: semantic,
                 theme: theme,
-                bodySize: bodySize,
+                // Read Mode is where the size control is reached from, so it is
+                // the one place it must visibly do something.
+                bodySize: bodySize * reading.textScale,
                 plan: plan,
                 elapsed: max(0, elapsed - plan.delay(forUnit: index))
             )

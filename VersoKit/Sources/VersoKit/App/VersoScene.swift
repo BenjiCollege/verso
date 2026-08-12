@@ -1,4 +1,5 @@
 import CoreSpotlight
+import WidgetKit
 import SwiftData
 import SwiftUI
 
@@ -69,6 +70,14 @@ public struct VersoScene: Scene {
                     // again; a vault that stays open in your pocket is a Face ID
                     // gate wearing a costume.
                     if phase == .background { vault.lock() }
+
+                    // The widget's own timeline refreshes half-hourly, which is
+                    // the right budget for a clock and the wrong one for notes:
+                    // it meant the Home Screen showed what you wrote up to half
+                    // an hour ago. Leaving the app is exactly when the widget
+                    // starts mattering and the app stops, so it is the moment
+                    // worth spending a reload on.
+                    if phase != .active { WidgetCenter.shared.reloadAllTimelines() }
                 }
                 .environment(vault)
                 .environment(appearance)
