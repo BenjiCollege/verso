@@ -69,7 +69,9 @@ struct NoteEditorView: View {
                 }
             }
         }
-        .versoTheme(theme, stock: stock, pinnedColorScheme: note.themeID == nil ? nil : theme.colorScheme)
+        // A note carrying its own theme lights itself. One without inherits the
+        // app's, which is already the theme's own appearance.
+        .versoTheme(theme, stock: stock)
         .environment(\.textEditingSession, session)
         .environment(\.editorFocusMode, isFocusMode)
         .environment(\.caretSuppressed, isCaretSuppressed)

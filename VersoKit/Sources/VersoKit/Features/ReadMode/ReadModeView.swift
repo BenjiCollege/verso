@@ -48,7 +48,7 @@ struct ReadModeView: View {
                     }
             }
         }
-        .versoTheme(theme, stock: stock, pinnedColorScheme: theme.colorScheme)
+        .versoTheme(theme, stock: stock)
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
         .contentShape(.rect)

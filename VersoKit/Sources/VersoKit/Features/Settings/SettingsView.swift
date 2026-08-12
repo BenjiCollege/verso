@@ -40,11 +40,11 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.segmented)
 
-                    if appearance.mode == .followSystem {
-                        Text("Verso uses a light theme in Light Mode and a dark theme in Dark Mode. You're choosing the \(colorScheme == .dark ? "dark" : "light") one.")
-                            .versoText(.chromeCaption)
-                            .foregroundStyle(theme.inkSecondary)
-                    }
+                    Text(appearance.mode == .followSystem
+                        ? "Verso follows Light and Dark Mode, using the \(colorScheme == .dark ? "dark" : "light") theme you pick below. Choose one built for the other and Verso will use it always."
+                        : "Verso stays in this theme whatever iOS is doing.")
+                        .versoText(.chromeCaption)
+                        .foregroundStyle(theme.inkSecondary)
                 }
 
                 Section("Theme") {
@@ -150,22 +150,20 @@ struct SettingsView: View {
 
     // MARK: - Theme
 
-    /// Pinning a theme offers all of them; following the system offers only the
-    /// ones built for the appearance currently in force.
-    private var availableThemes: [Theme] {
-        switch appearance.mode {
-        case .pinned:
-            catalog.themes
-        case .followSystem:
-            catalog.themes(for: colorScheme == .dark ? .dark : .light)
-        }
-    }
+    /// All of them, always.
+    ///
+    /// Following the system used to hide every theme built for the other
+    /// appearance, which made half the library invisible for no reason a reader
+    /// could see. Choosing a dark theme in daylight is a legitimate thing to
+    /// want; `selectTheme` reads it as choosing the look and stops following the
+    /// system, and the app follows the paper from there.
+    private var availableThemes: [Theme] { catalog.themes }
 
     private func themeRow(_ candidate: Theme) -> some View {
         let isSelected = appearance.selectedThemeID(systemColorScheme: colorScheme) == candidate.id
 
         return Button {
-            appearance.selectTheme(candidate.id, systemColorScheme: colorScheme)
+            appearance.selectTheme(candidate.id, systemColorScheme: colorScheme, catalog: catalog)
         } label: {
             HStack(spacing: Layout.Space.cosy) {
                 ThemeSwatch(theme: candidate)

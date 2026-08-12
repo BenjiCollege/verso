@@ -68,18 +68,34 @@ final class AppearanceStore {
     func theme(systemColorScheme: ColorScheme, catalog: ThemeCatalog) -> Theme {
         switch mode {
         case .pinned:
-            catalog.resolveTheme(selectedID: pinnedThemeID, appearance: .light)
+            return catalog.theme(id: pinnedThemeID)
+                ?? catalog.defaultTheme(for: systemColorScheme == .dark ? .dark : .light)
         case .followSystem:
-            systemColorScheme == .dark
-                ? catalog.resolveTheme(selectedID: darkThemeID, appearance: .dark)
-                : catalog.resolveTheme(selectedID: lightThemeID, appearance: .light)
+            let wanted: Theme.Appearance = systemColorScheme == .dark ? .dark : .light
+            let stored = catalog.theme(id: wanted == .dark ? darkThemeID : lightThemeID)
+            // The appearance is checked rather than assumed. A dark theme
+            // sitting in the light slot — which is what an earlier build wrote
+            // when you picked one — paints dark paper while the scheme below
+            // says light, and the ink vanishes into the page.
+            guard let stored, stored.appearance == wanted else {
+                return catalog.defaultTheme(for: wanted)
+            }
+            return stored
         }
     }
 
-    /// `nil` while following the system, so the system stays in charge.
-    func pinnedColorScheme(catalog: ThemeCatalog) -> ColorScheme? {
-        guard mode == .pinned else { return nil }
-        return catalog.resolveTheme(selectedID: pinnedThemeID, appearance: .light).colorScheme
+    /// What the whole app renders as, chrome included.
+    ///
+    /// Always the theme's own appearance, never the system's. The theme decides
+    /// the paper, and every system-derived colour — `.secondary`, toolbar glass,
+    /// a sheet's background, a `TextField`'s default ink — has to agree with it
+    /// or the text disappears into it.
+    ///
+    /// This cannot feed back on itself: in `followSystem` the theme above always
+    /// matches the appearance that selected it, so forcing that appearance
+    /// changes nothing and the next pass resolves identically.
+    func appliedColorScheme(systemColorScheme: ColorScheme, catalog: ThemeCatalog) -> ColorScheme {
+        theme(systemColorScheme: systemColorScheme, catalog: catalog).colorScheme
     }
 
     func stock(catalog: ThemeCatalog) -> Stock {
@@ -87,12 +103,24 @@ final class AppearanceStore {
     }
 
     /// Which slot a theme picker writes to for the current mode and appearance.
-    func selectTheme(_ id: String, systemColorScheme: ColorScheme) {
+    ///
+    /// Choosing a theme whose appearance disagrees with the system — a dark
+    /// paper while iOS is in Light — is read as choosing the look, so the app
+    /// adopts it and stops following the system. The alternative is storing a
+    /// dark theme in the light slot, where it is either ignored or renders
+    /// unreadably, and neither is what the tap meant.
+    func selectTheme(_ id: String, systemColorScheme: ColorScheme, catalog: ThemeCatalog) {
+        guard let theme = catalog.theme(id: id) else { return }
+        let systemAppearance: Theme.Appearance = systemColorScheme == .dark ? .dark : .light
+
         switch mode {
         case .pinned:
             pinnedThemeID = id
+        case .followSystem where theme.appearance == systemAppearance:
+            if systemAppearance == .dark { darkThemeID = id } else { lightThemeID = id }
         case .followSystem:
-            if systemColorScheme == .dark { darkThemeID = id } else { lightThemeID = id }
+            pinnedThemeID = id
+            mode = .pinned
         }
     }
 

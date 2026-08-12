@@ -17,7 +17,10 @@ struct RootView: View {
             .versoTheme(
                 appearance.theme(systemColorScheme: systemColorScheme, catalog: catalog),
                 stock: appearance.stock(catalog: catalog),
-                pinnedColorScheme: appearance.pinnedColorScheme(catalog: catalog)
+                colorScheme: appearance.appliedColorScheme(
+                    systemColorScheme: systemColorScheme,
+                    catalog: catalog
+                )
             )
             .versoMotion()
     }

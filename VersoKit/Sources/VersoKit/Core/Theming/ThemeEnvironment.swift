@@ -17,11 +17,15 @@ extension EnvironmentValues {
 private struct ThemeApplier: ViewModifier {
     let theme: Theme
     let stock: Stock
-    /// Non-nil only when the user has pinned a theme rather than following the
-    /// system. Setting `preferredColorScheme` while *also* deriving the theme
-    /// from `\.colorScheme` would feed back on itself, so following the system
-    /// deliberately leaves the scheme alone.
-    let pinnedColorScheme: ColorScheme?
+    /// Always set, and always the theme's own appearance.
+    ///
+    /// Leaving it to the system — which is what following the system used to
+    /// mean — let the paper and the chrome disagree: a dark theme with iOS in
+    /// Light gave dark ink on dark paper, and the note read as empty. The theme
+    /// is the single source of appearance now, and `AppearanceStore` guarantees
+    /// the value it hands over matches the theme it selected, so this cannot
+    /// feed back into that choice.
+    let colorScheme: ColorScheme
 
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -35,15 +39,19 @@ private struct ThemeApplier: ViewModifier {
         content
             .environment(\.theme, resolved)
             .environment(\.stock, stock)
-            // The chrome is glass and takes its cue from the system colour
-            // scheme, so a pinned light theme must not leave dark toolbars behind.
-            .preferredColorScheme(pinnedColorScheme)
+            // The chrome is glass and takes its cue from the colour scheme, so
+            // the theme has to set it or a light theme leaves dark toolbars
+            // behind — and, worse, dark body text on light paper.
+            .preferredColorScheme(colorScheme)
+            .environment(\.colorScheme, colorScheme)
             .tint(resolved.accent)
     }
 }
 
 extension View {
-    func versoTheme(_ theme: Theme, stock: Stock, pinnedColorScheme: ColorScheme? = nil) -> some View {
-        modifier(ThemeApplier(theme: theme, stock: stock, pinnedColorScheme: pinnedColorScheme))
+    /// The colour scheme defaults to the theme's own, which is what every caller
+    /// wants: a themed surface should never be lit by someone else's decision.
+    func versoTheme(_ theme: Theme, stock: Stock, colorScheme: ColorScheme? = nil) -> some View {
+        modifier(ThemeApplier(theme: theme, stock: stock, colorScheme: colorScheme ?? theme.colorScheme))
     }
 }
