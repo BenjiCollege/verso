@@ -45,6 +45,19 @@ enum Layout {
     /// The target measure, in characters. Section 6 caps it at 68.
     static let measureCharacters: CGFloat = 68
 
+    /// The widest the text column is allowed to get.
+    ///
+    /// Landscape and iPad have width to spare, and text that simply grows to
+    /// fill it is harder to read rather than easier — past about seventy
+    /// characters the eye starts losing which line it is returning to. So the
+    /// column grows to the measure and the margins take the rest.
+    ///
+    /// Half the point size per character is the usual approximation for a
+    /// serif's average advance, and it is what the 68 was chosen against.
+    static func maxPageWidth(bodyPointSize: CGFloat) -> CGFloat {
+        measureCharacters * bodyPointSize * 0.5
+    }
+
     /// Mean glyph advance as a fraction of point size for New York at text
     /// sizes. Used to turn a character count into a width.
     static let meanGlyphAdvance: CGFloat = 0.48

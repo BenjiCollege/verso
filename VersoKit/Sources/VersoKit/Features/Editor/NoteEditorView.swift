@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import UIKit
 
 /// The page.
 ///
@@ -24,7 +25,12 @@ struct NoteEditorView: View {
     @Environment(IntelligenceService.self) private var intelligence
     @Environment(RecordingSession.self) private var recording
 
+    /// Drives the measure, so the column widens with Dynamic Type rather than
+    /// keeping 68 characters of ever-larger text on the same line length.
+    @ScaledMetric(relativeTo: .body) private var bodySize: CGFloat = Typography.Role.body.pointSize
+
     @State private var session = TextEditingSession()
+    @State private var blockActions = BlockActions()
     @State private var scrollPosition = ScrollPosition()
     @State private var scrollGeometry: ScrollGeometry?
     @State private var isReordering = false
@@ -71,6 +77,17 @@ struct NoteEditorView: View {
         }
         // A note carrying its own theme lights itself. One without inherits the
         // app's, which is already the theme's own appearance.
+        .overlay(alignment: .bottom) {
+            if blockActions.recovered != nil {
+                BlockRecoveryBanner {
+                    blockActions.undo(in: note, context: context)
+                } onDismiss: {
+                    blockActions.dismiss()
+                }
+                .padding(.bottom, Layout.Space.loose)
+            }
+        }
+        .animation(motion.animation(.settle), value: blockActions.recovered)
         .versoTheme(theme, stock: stock)
         .environment(\.textEditingSession, session)
         .environment(\.editorFocusMode, isFocusMode)
@@ -217,6 +234,13 @@ struct NoteEditorView: View {
                             .opacity(dimming(for: block))
                             .animation(motion.animation(.settle), value: isChromeHidden)
                             .animation(motion.animation(.settle), value: session.activeBlockID)
+                            .blockActions {
+                                blockActions.duplicate(block, in: note, context: context)
+                                haptics.play(.checklistCheck)
+                            } delete: {
+                                blockActions.delete(block, in: note, context: context)
+                                haptics.play(.noteDeleted)
+                            }
                     }
 
                     BacklinksView(noteID: note.id)
@@ -228,8 +252,16 @@ struct NoteEditorView: View {
             }
             .padding(.horizontal, Layout.pageMargin)
             .padding(.top, Layout.Space.snug)
+            // Turned sideways there is width to spare. The column takes it up
+            // to the measure and then stops, centred, rather than stretching a
+            // line of prose across the whole device.
+            .frame(maxWidth: Layout.maxPageWidth(bodyPointSize: bodySize))
+            .frame(maxWidth: .infinity)
             .coordinateSpace(.named(Self.pageCoordinateSpace))
         }
+        // Dragging the page puts the keyboard away, which is the gesture people
+        // already try first.
+        .scrollDismissesKeyboard(.interactively)
         .scrollPosition($scrollPosition)
         .onScrollGeometryChange(for: ScrollGeometry.self) { $0 } action: { _, newValue in
             scrollGeometry = newValue
@@ -241,8 +273,28 @@ struct NoteEditorView: View {
             // there are words. Rules *are* per-fragment — PageTextLayoutFragment
             // puts them on real baselines, so they travel with the text.
             GrainOverlay(intensity: theme.grain)
+                // And tapping bare paper puts it away too. This sits behind the
+                // blocks, so a tap meant for a paragraph reaches the paragraph
+                // and only the ones that miss — the margins, the space past the
+                // last block — land here.
+                .contentShape(.rect)
+                .onTapGesture { dismissKeyboard() }
         }
         .pageMeasure()
+    }
+
+    /// Puts the keyboard away.
+    ///
+    /// There is no focus binding to clear: paragraphs are `UITextView`s behind a
+    /// representable, so `@FocusState` never sees them. Asking the responder
+    /// chain is the one thing that reaches all of them at once.
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
     }
 
     private var titleField: some View {
