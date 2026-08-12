@@ -252,7 +252,9 @@ struct SettingsView: View {
 
 /// Page colour, a stroke of ink, and the accent — enough to tell six themes
 /// apart at a glance without a screenshot.
-private struct ThemeSwatch: View {
+/// The paper-and-ink pill that stands for a theme. Shared by Settings and the
+/// per-note picker, which is why it is not file-private.
+struct ThemeSwatch: View {
     let theme: Theme
 
     var body: some View {
