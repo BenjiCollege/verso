@@ -20,7 +20,9 @@ final class CustomThemeStore {
 
     /// The prefix every user theme's id carries, so a bundled theme and a made
     /// one can never collide and `isCustom` needs no separate flag on disk.
-    static let idPrefix = "custom."
+    /// `nonisolated` because `Theme.isCustom` reads it, and a `Theme` is a
+    /// value that travels anywhere.
+    nonisolated static let idPrefix = "custom."
 
     private(set) var themes: [Theme] = []
     private(set) var lastError: String?
