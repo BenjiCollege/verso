@@ -25,6 +25,7 @@ public struct VersoScene: Scene {
     /// on your phone must not start counting on your iPad.
     @State private var timers = RestTimerService()
     @State private var userTemplates = UserTemplateStore()
+    @State private var customThemes = CustomThemeStore()
     @State private var haptics = HapticEngine()
     @State private var intelligence = IntelligenceService()
     @State private var recording = RecordingSession()
@@ -74,6 +75,7 @@ public struct VersoScene: Scene {
                 .environment(linkIndex)
                 .environment(timers)
                 .environment(userTemplates)
+                .environment(customThemes)
                 .environment(haptics)
                 .environment(intelligence)
                 .environment(recording)

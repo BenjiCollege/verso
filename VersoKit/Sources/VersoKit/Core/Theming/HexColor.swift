@@ -12,6 +12,22 @@ struct HexColor: Hashable, Sendable {
     var blue: Double
     var alpha: Double
 
+    /// Back from a `Color`, for the theme editor's pickers.
+    ///
+    /// Resolved in the default environment: a theme file holds fixed values, so
+    /// a colour that changed with the trait collection would be a theme that
+    /// only sometimes says what it says.
+    @MainActor
+    init(_ color: Color) {
+        let resolved = color.resolve(in: EnvironmentValues())
+        self.init(
+            red: Double(resolved.red),
+            green: Double(resolved.green),
+            blue: Double(resolved.blue),
+            alpha: Double(resolved.opacity)
+        )
+    }
+
     init(red: Double, green: Double, blue: Double, alpha: Double = 1) {
         self.red = red
         self.green = green

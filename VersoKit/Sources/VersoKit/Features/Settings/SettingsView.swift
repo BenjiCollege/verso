@@ -10,7 +10,11 @@ struct SettingsView: View {
     @Environment(\.theme) private var theme
     @Environment(\.colorScheme) private var colorScheme
 
+    @Environment(CustomThemeStore.self) private var customThemes
+
     @State private var isAdjustingReading = false
+    /// The theme being made or changed. Non-nil presents the editor.
+    @State private var editing: Theme?
     @Environment(\.dismiss) private var dismiss
     @Environment(VaultService.self) private var vault
     @Environment(IntelligenceService.self) private var intelligence
@@ -49,10 +53,36 @@ struct SettingsView: View {
                         .foregroundStyle(theme.inkSecondary)
                 }
 
-                Section("Theme") {
+                Section {
                     ForEach(availableThemes) { candidate in
                         themeRow(candidate)
+                            .swipeActions(edge: .trailing) {
+                                if candidate.isCustom {
+                                    Button(role: .destructive) {
+                                        customThemes.delete(id: candidate.id)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                    Button {
+                                        editing = candidate
+                                    } label: {
+                                        Label("Edit", systemImage: "pencil")
+                                    }
+                                }
+                            }
                     }
+
+                    Button {
+                        // From the theme in force, not from a blank page: seven
+                        // colours chosen from nothing is a design job.
+                        editing = customThemes.draft(basedOn: theme)
+                    } label: {
+                        Label("Make a theme", systemImage: "plus")
+                    }
+                } header: {
+                    Text("Theme")
+                } footer: {
+                    Text("Themes you make live on this device. They don't sync, and they aren't part of a note — a note carrying one keeps the look only here.")
                 }
 
                 Section("Paper") {
@@ -173,6 +203,17 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
+                }
+            }
+            .sheet(item: $editing) { draft in
+                ThemeEditorView(draft: draft) { saved in
+                    guard customThemes.save(saved) else { return }
+                    // Selecting it is the point of having made it.
+                    appearance.selectTheme(
+                        saved.id,
+                        systemColorScheme: colorScheme,
+                        catalog: catalog.adding(customThemes.themes + [saved])
+                    )
                 }
             }
             .sheet(isPresented: $isAdjustingReading) {

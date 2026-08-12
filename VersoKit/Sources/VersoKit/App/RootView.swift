@@ -8,9 +8,16 @@ import SwiftUI
 struct RootView: View {
     @Environment(AppearanceStore.self) private var appearance
     @Environment(HapticEngine.self) private var haptics
+    @Environment(CustomThemeStore.self) private var customThemes
     @Environment(\.colorScheme) private var systemColorScheme
 
-    private let catalog = ThemeCatalog.shared
+    /// Bundled themes plus the user's own, recomputed when the store changes —
+    /// which is what makes a theme usable the moment it is saved rather than on
+    /// the next launch. `ThemeCatalog.shared` stays the bundled set, for the
+    /// exporters and the widgets, which have no user themes to read.
+    private var catalog: ThemeCatalog {
+        ThemeCatalog.shared.adding(customThemes.themes)
+    }
 
     var body: some View {
         LibraryView()
