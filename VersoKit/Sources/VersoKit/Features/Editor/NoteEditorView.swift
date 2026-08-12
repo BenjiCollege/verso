@@ -252,10 +252,14 @@ struct NoteEditorView: View {
             }
             .padding(.horizontal, Layout.pageMargin)
             .padding(.top, Layout.Space.snug)
-            // Turned sideways there is width to spare. The column takes it up
-            // to the measure and then stops, centred, rather than stretching a
-            // line of prose across the whole device.
-            .frame(maxWidth: Layout.maxPageWidth(bodyPointSize: bodySize))
+            // Turned sideways there is width to spare, and `pageMeasure` alone
+            // spent all of it on margins — which is why rotating appeared to do
+            // nothing. The column takes it as text up to the relaxed measure,
+            // then stops and centres.
+            .frame(maxWidth: Layout.measureWidth(
+                atPointSize: bodySize,
+                characters: Layout.relaxedMeasureCharacters
+            ))
             .frame(maxWidth: .infinity)
             .coordinateSpace(.named(Self.pageCoordinateSpace))
         }
@@ -280,7 +284,6 @@ struct NoteEditorView: View {
                 .contentShape(.rect)
                 .onTapGesture { dismissKeyboard() }
         }
-        .pageMeasure()
     }
 
     /// Puts the keyboard away.

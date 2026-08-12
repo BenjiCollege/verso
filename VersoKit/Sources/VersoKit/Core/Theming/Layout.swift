@@ -45,18 +45,16 @@ enum Layout {
     /// The target measure, in characters. Section 6 caps it at 68.
     static let measureCharacters: CGFloat = 68
 
-    /// The widest the text column is allowed to get.
+    /// The measure the editor is allowed to relax to when there is width going
+    /// spare — turned sideways, or on an iPad.
     ///
-    /// Landscape and iPad have width to spare, and text that simply grows to
-    /// fill it is harder to read rather than easier — past about seventy
-    /// characters the eye starts losing which line it is returning to. So the
-    /// column grows to the measure and the margins take the rest.
-    ///
-    /// Half the point size per character is the usual approximation for a
-    /// serif's average advance, and it is what the 68 was chosen against.
-    static func maxPageWidth(bodyPointSize: CGFloat) -> CGFloat {
-        measureCharacters * bodyPointSize * 0.5
-    }
+    /// Section 6 caps reading at 68 because past about seventy characters the
+    /// eye starts losing which line it is returning to. That cap is right for
+    /// Read Mode, where the whole job is reading. While *writing*, holding a
+    /// phone sideways and getting nothing but wider margins reads as the app
+    /// ignoring you — so the editor goes to 84, which is still inside what a
+    /// line can carry, and takes the extra as text rather than as paper.
+    static let relaxedMeasureCharacters: CGFloat = 84
 
     /// Mean glyph advance as a fraction of point size for New York at text
     /// sizes. Used to turn a character count into a width.
@@ -65,8 +63,8 @@ enum Layout {
     /// Width of `measureCharacters` at the given point size. On iPhone this is
     /// wider than the screen and has no effect; on iPad it is what stops the
     /// page stretching to fill the window.
-    static func measureWidth(atPointSize size: CGFloat) -> CGFloat {
-        measureCharacters * meanGlyphAdvance * size
+    static func measureWidth(atPointSize size: CGFloat, characters: CGFloat = measureCharacters) -> CGFloat {
+        characters * meanGlyphAdvance * size
     }
 
     // MARK: - Controls
