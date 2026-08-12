@@ -56,12 +56,28 @@ struct LibraryView: View {
             // An intent, a widget tap, a Spotlight result or a Handoff can all
             // arrive before this view exists, so they are buffered and acted on
             // here rather than pushed from outside.
-            .onChange(of: navigation.pending) { _, request in
-                guard let request,
-                      let note = notes.first(where: { $0.id == request.noteID })
-                else { return }
-                path.append(note)
-                navigation.clear()
+            // `initial: true` because the buffering above is otherwise wasted:
+            // a widget tap or a Spotlight result on a *cold* launch sets the
+            // request while this view is still being built, and `onChange`
+            // alone does not fire for a value that was already there.
+            .onChange(of: navigation.pending, initial: true) { _, _ in
+                openPendingNote()
+            }
+            // And again when the query delivers. On a cold launch the request
+            // is already set before the first render, so `initial: true` above
+            // runs against an empty `notes` and finds nothing. The request is
+            // deliberately left pending in that case rather than cleared, so
+            // this second look is what actually opens it.
+            .onChange(of: notes.count) { _, _ in
+                openPendingNote()
+            }
+            // Opening a template file launches the app, so this is always the
+            // cold-launch case. The gallery is the confirmation: the import has
+            // already happened, and it is sitting there under the user's own.
+            .onChange(of: navigation.arrivedTemplate, initial: true) { _, arrival in
+                guard arrival != nil else { return }
+                isChoosingTemplate = true
+                navigation.clearTemplateArrival()
             }
             .sheet(isPresented: $isChoosingTemplate) {
                 TemplateGalleryView(onSelect: createNote)
@@ -234,6 +250,19 @@ struct LibraryView: View {
     }
 
     // MARK: - Actions
+
+    /// Opens whatever the outside world asked for, if it can be found yet.
+    ///
+    /// Leaves the request pending when the note is not in `notes` — it may
+    /// simply not have loaded, and clearing here would lose a widget tap to a
+    /// race with the query.
+    private func openPendingNote() {
+        guard let request = navigation.pending,
+              let note = notes.first(where: { $0.id == request.noteID })
+        else { return }
+        path.append(note)
+        navigation.clear()
+    }
 
     private func createNote(from template: Template) {
         do {

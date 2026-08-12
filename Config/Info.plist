@@ -69,6 +69,16 @@
 			</dict>
 		</dict>
 	</array>
+	<!-- NO, not YES, despite the recommendation in ITMS-90737's text. Verso
+	     never edits a file where it lies: `UserTemplateStore.importTemplate`
+	     reads the bytes and writes a new file under a new id, and
+	     `DocumentStore.importDocument` copies deliberately, so a note can
+	     never point at a document that has wandered off. Declaring YES would
+	     promise in-place editing the app does not do. There is no
+	     UIDocumentBrowserViewController either, so UISupportsDocumentBrowser
+	     stays absent. -->
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<false/>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>

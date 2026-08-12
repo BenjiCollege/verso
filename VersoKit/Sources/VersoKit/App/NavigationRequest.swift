@@ -21,7 +21,18 @@ final class NavigationRequest {
         var issuedAt: Date
     }
 
+    /// A template file that arrived from outside — Files, Mail, AirDrop.
+    ///
+    /// Buffered for a stronger reason than the rest: opening a
+    /// `.versotemplate` *launches* the app, so the import has always finished
+    /// before there is any view to show it in.
+    struct TemplateArrival: Equatable, Sendable {
+        var name: String
+        var issuedAt: Date
+    }
+
     private(set) var pending: Request?
+    private(set) var arrivedTemplate: TemplateArrival?
 
     nonisolated init() {}
 
@@ -29,9 +40,17 @@ final class NavigationRequest {
         pending = Request(noteID: id, startRecording: startRecording, issuedAt: Date())
     }
 
+    func templateArrived(named name: String) {
+        arrivedTemplate = TemplateArrival(name: name, issuedAt: Date())
+    }
+
     /// Called once the request has been acted on.
     func clear() {
         pending = nil
+    }
+
+    func clearTemplateArrival() {
+        arrivedTemplate = nil
     }
 }
 

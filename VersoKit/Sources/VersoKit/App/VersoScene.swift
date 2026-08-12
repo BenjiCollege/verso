@@ -82,6 +82,20 @@ public struct VersoScene: Scene {
                 .environment(spotlight)
                 // Widgets, controls and the Lock Screen all arrive as a URL.
                 .onOpenURL { url in
+                    // A `.versotemplate` opened from Files, Mail or AirDrop
+                    // arrives here as a file URL rather than a verso:// one.
+                    // `Info.plist` declares Verso the owner of the type, so
+                    // falling through to `VersoURL` — which resolves a file URL
+                    // to nothing — meant the system handing the app a file it
+                    // then silently dropped.
+                    if url.isFileURL {
+                        guard url.pathExtension == UserTemplateStore.fileExtension,
+                              let template = userTemplates.importTemplate(from: url)
+                        else { return }
+                        navigation.templateArrived(named: template.name)
+                        return
+                    }
+
                     switch VersoURL.destination(for: url) {
                     case .note(let id): navigation.openNote(id: id)
                     case .capture, .none: break
