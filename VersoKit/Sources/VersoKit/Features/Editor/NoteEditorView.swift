@@ -243,22 +243,18 @@ struct NoteEditorView: View {
                             .animation(motion.animation(.settle), value: session.activeBlockID)
                             .blockActions(
                                 canMoveUp: blockActions.canMove(block, in: note, by: -1),
-                                canMoveDown: blockActions.canMove(block, in: note, by: 1)
-                            ) {
-                                withAnimation(motion.animation(.settle)) {
-                                    blockActions.move(block, in: note, by: -1)
+                                canMoveDown: blockActions.canMove(block, in: note, by: 1),
+                                moveUp: { move(block, by: -1) },
+                                moveDown: { move(block, by: 1) },
+                                duplicate: {
+                                    blockActions.duplicate(block, in: note, context: context)
+                                    haptics.play(.checklistCheck)
+                                },
+                                delete: {
+                                    blockActions.delete(block, in: note, context: context)
+                                    haptics.play(.noteDeleted)
                                 }
-                            } moveDown: {
-                                withAnimation(motion.animation(.settle)) {
-                                    blockActions.move(block, in: note, by: 1)
-                                }
-                            } duplicate: {
-                                blockActions.duplicate(block, in: note, context: context)
-                                haptics.play(.checklistCheck)
-                            } delete: {
-                                blockActions.delete(block, in: note, context: context)
-                                haptics.play(.noteDeleted)
-                            }
+                            )
                     }
 
                     BacklinksView(noteID: note.id)
@@ -301,6 +297,15 @@ struct NoteEditorView: View {
                 // last block — land here.
                 .contentShape(.rect)
                 .onTapGesture { dismissKeyboard() }
+        }
+    }
+
+    /// Named rather than written inline: four trailing closures in the middle of
+    /// a `LazyVStack` gave the type-checker more than it would take, and the
+    /// error it produced named the `ScrollView` thirty lines above.
+    private func move(_ block: Block, by offset: Int) {
+        withAnimation(motion.animation(.settle)) {
+            _ = blockActions.move(block, in: note, by: offset)
         }
     }
 
