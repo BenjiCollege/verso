@@ -7,6 +7,7 @@ import SwiftUI
 /// reads a JSON file — it reads `\.theme` and `\.motion`.
 struct RootView: View {
     @Environment(AppearanceStore.self) private var appearance
+    @Environment(HapticEngine.self) private var haptics
     @Environment(\.colorScheme) private var systemColorScheme
 
     private let catalog = ThemeCatalog.shared
@@ -22,6 +23,13 @@ struct RootView: View {
                     catalog: catalog
                 )
             )
+            .environment(\.readingPreferences, appearance.reading)
+            // The engine is built once in the scene, so the preference is
+            // pushed into it rather than read from it — nothing below here
+            // should have to know a setting exists to stay silent.
+            .onChange(of: appearance.isHapticsEnabled, initial: true) { _, enabled in
+                haptics.isEnabled = enabled
+            }
             .versoMotion()
     }
 }

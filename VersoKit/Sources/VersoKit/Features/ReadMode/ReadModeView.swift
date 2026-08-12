@@ -16,8 +16,18 @@ struct ReadModeView: View {
 
     @ScaledMetric(relativeTo: .body) private var bodySize: CGFloat = Typography.Role.body.pointSize
 
+    @Environment(AppearanceStore.self) private var appearance
+    @Environment(\.readingPreferences) private var reading
+
     @State private var startedAt: Date?
     @State private var isComplete = false
+
+    /// The way out, and the way to change how it reads. Visible on arrival —
+    /// a reading view you cannot leave without guessing where to tap is a trap,
+    /// and this one used to hide its only exit behind a system overlay.
+    @State private var isShowingChrome = true
+    @State private var isShowingControls = false
+    @State private var dragOffset: CGFloat = 0
 
     /// Resolved once on entry. The timeline ticks sixty times a second, and
     /// sorting blocks or decoding payloads on each of those ticks is exactly
@@ -48,12 +58,34 @@ struct ReadModeView: View {
                     }
             }
         }
+        .offset(y: dragOffset)
         .versoTheme(theme, stock: stock)
-        .statusBarHidden()
-        .persistentSystemOverlays(.hidden)
+        .statusBarHidden(!isShowingChrome)
+        .persistentSystemOverlays(isShowingChrome ? .automatic : .hidden)
         .contentShape(.rect)
-        .onTapGesture { skip() }
-        .overlay(alignment: .topTrailing) { closeButton }
+        .onTapGesture { handleTap() }
+        // Pull down to leave, the way every other full-screen reader works.
+        // `fullScreenCover` offers no dismiss gesture of its own.
+        .gesture(
+            DragGesture(minimumDistance: 20)
+                .onChanged { value in
+                    guard value.translation.height > 0 else { return }
+                    dragOffset = value.translation.height
+                }
+                .onEnded { value in
+                    if value.translation.height > 120 {
+                        dismiss()
+                    } else {
+                        withAnimation(motion.animation(.settle)) { dragOffset = 0 }
+                    }
+                }
+        )
+        .overlay(alignment: .top) { chrome }
+        .sheet(isPresented: $isShowingControls) {
+            ReadingControlsSheet()
+                .presentationDetents([.height(320)])
+                .presentationDragIndicator(.visible)
+        }
         .task {
             blocks = note.orderedBlocks
             texts = Dictionary(
@@ -88,7 +120,7 @@ struct ReadModeView: View {
                     blockView(for: block, index: index + 1, elapsed: elapsed)
                 }
             }
-            .padding(.horizontal, Layout.pageMargin)
+            .padding(.horizontal, Layout.pageMargin * reading.marginScale)
             .padding(.vertical, Layout.Space.vast)
         }
         .scrollIndicators(.hidden)
@@ -114,6 +146,49 @@ struct ReadModeView: View {
                 .disabled(true)
                 .allowsHitTesting(false)
                 .revealed(plan: plan, index: index, elapsed: elapsed)
+        }
+    }
+
+    /// A tap means the most useful thing available: skip a reveal still running,
+    /// otherwise show or hide the chrome.
+    private func handleTap() {
+        if !isComplete {
+            skip()
+        } else {
+            withAnimation(motion.animation(.settle)) { isShowingChrome.toggle() }
+        }
+    }
+
+    @ViewBuilder
+    private var chrome: some View {
+        if isShowingChrome {
+            HStack {
+                Button {
+                    dismiss()
+                } label: {
+                    Label("Done", systemImage: "chevron.down")
+                        .versoText(.chromeLabel)
+                        .labelStyle(.titleAndIcon)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(theme.accent)
+
+                Spacer(minLength: Layout.Space.regular)
+
+                Button {
+                    isShowingControls = true
+                } label: {
+                    Image(systemName: "textformat.size")
+                        .font(.system(size: Layout.Space.regular, weight: .medium))
+                        .foregroundStyle(theme.accent)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("Reading settings"))
+            }
+            .padding(.horizontal, Layout.Space.regular)
+            .padding(.vertical, Layout.Space.cosy)
+            .background(.regularMaterial)
+            .transition(motion.transition(.settle, motion: .opacity))
         }
     }
 

@@ -34,6 +34,7 @@ struct NoteEditorView: View {
     @State private var scrollPosition = ScrollPosition()
     @State private var scrollGeometry: ScrollGeometry?
     @State private var isReordering = false
+    @State private var isChangingLook = false
     @State private var isSavingTemplate = false
     @State private var isReading = false
     @State private var isExporting = false
@@ -100,6 +101,12 @@ struct NoteEditorView: View {
         .sheet(isPresented: $isReordering) {
             BlockReorderSheet(note: note)
         }
+        .sheet(isPresented: $isChangingLook) {
+            NoteLookSheet(note: note)
+        }
+        // Focus Mode is a preference now, so a page opens the way the last one
+        // did rather than resetting every time.
+        .onAppear { isFocusMode = appearance.isFocusModeEnabled }
         .sheet(isPresented: $isSavingTemplate) {
             SaveAsTemplateSheet(note: note)
         }
@@ -427,6 +434,11 @@ struct NoteEditorView: View {
                     isReordering = true
                 } label: {
                     Label("Reorder Blocks", systemImage: "arrow.up.arrow.down")
+                }
+                Button {
+                    isChangingLook = true
+                } label: {
+                    Label("Page Look", systemImage: "paintpalette")
                 }
                 // Always present, because it always works: with the on-device
                 // model where there is one, and by ordinary text processing

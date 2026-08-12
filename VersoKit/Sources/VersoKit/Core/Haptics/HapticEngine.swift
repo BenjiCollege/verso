@@ -33,6 +33,13 @@ final class HapticEngine {
 
     private(set) var isSupported = CHHapticEngine.capabilitiesForHardware().supportsHaptics
 
+    /// The user's switch, kept apart from `isSupported` so turning haptics off
+    /// and having no haptics stay distinguishable — one is a preference, the
+    /// other is hardware, and Settings should not claim the second.
+    var isEnabled = true
+
+    private var canPlay: Bool { isSupported && isEnabled }
+
     @ObservationIgnored private var engine: CHHapticEngine?
     @ObservationIgnored private var scrubPlayer: CHHapticAdvancedPatternPlayer?
 
@@ -81,7 +88,7 @@ final class HapticEngine {
     // MARK: - One-shot
 
     func play(_ pattern: Pattern) {
-        guard isSupported else { return }
+        guard canPlay else { return }
         prepare()
 
         guard let engine, let url = url(for: pattern) else { return }
@@ -104,7 +111,7 @@ final class HapticEngine {
     private static let scrubDuration: TimeInterval = 30
 
     func beginScrub() {
-        guard isSupported else { return }
+        guard canPlay else { return }
         prepare()
         guard let engine else { return }
 

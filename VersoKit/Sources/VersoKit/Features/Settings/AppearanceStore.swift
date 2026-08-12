@@ -32,6 +32,13 @@ final class AppearanceStore {
         static let stock = "appearance.stock"
         static let typewriter = "editor.typewriter"
         static let keepAudioOnDevice = "audio.localOnly"
+        static let textScale = "reading.textScale"
+        static let lineSpacingScale = "reading.lineSpacing"
+        static let marginScale = "reading.margin"
+        static let typeface = "reading.typeface"
+        static let hapticsEnabled = "editor.haptics"
+        static let autocorrect = "editor.autocorrect"
+        static let focusMode = "editor.focusMode"
     }
 
     private let defaults: UserDefaults
@@ -51,10 +58,68 @@ final class AppearanceStore {
     /// afterwards; this is only what a fresh one starts as.
     var keepAudioOnDevice: Bool { didSet { defaults.set(keepAudioOnDevice, forKey: Key.keepAudioOnDevice) } }
 
+    // MARK: - Reading
+
+    var textScale: Double {
+        didSet { defaults.set(textScale, forKey: Key.textScale) }
+    }
+    var lineSpacingScale: Double {
+        didSet { defaults.set(lineSpacingScale, forKey: Key.lineSpacingScale) }
+    }
+    var marginScale: Double {
+        didSet { defaults.set(marginScale, forKey: Key.marginScale) }
+    }
+    var typeface: ContentTypeface {
+        didSet { defaults.set(typeface.rawValue, forKey: Key.typeface) }
+    }
+
+    /// What every themed surface reads to size its type.
+    var reading: ReadingPreferences {
+        ReadingPreferences(
+            textScale: textScale,
+            lineSpacingScale: lineSpacingScale,
+            marginScale: marginScale,
+            typeface: typeface
+        )
+    }
+
+    func resetReading() {
+        textScale = ReadingPreferences.default.textScale
+        lineSpacingScale = ReadingPreferences.default.lineSpacingScale
+        marginScale = ReadingPreferences.default.marginScale
+        typeface = ReadingPreferences.default.typeface
+    }
+
+    // MARK: - Editor behaviour
+
+    var isHapticsEnabled: Bool { didSet { defaults.set(isHapticsEnabled, forKey: Key.hapticsEnabled) } }
+    var isAutocorrectEnabled: Bool { didSet { defaults.set(isAutocorrectEnabled, forKey: Key.autocorrect) } }
+
+    /// Whether the page dims everything but the sentence being written. A
+    /// preference rather than a per-session toggle, so it survives relaunch.
+    var isFocusModeEnabled: Bool { didSet { defaults.set(isFocusModeEnabled, forKey: Key.focusMode) } }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         self.isTypewriterEnabled = defaults.bool(forKey: Key.typewriter)
         self.keepAudioOnDevice = defaults.bool(forKey: Key.keepAudioOnDevice)
+
+        // `object(forKey:)` rather than `double(forKey:)`: the latter answers 0
+        // for a key never written, and a text scale of zero is an invisible app.
+        func stored(_ key: String, default fallback: Double, in range: ClosedRange<Double>) -> Double {
+            guard let value = defaults.object(forKey: key) as? Double else { return fallback }
+            return min(max(value, range.lowerBound), range.upperBound)
+        }
+
+        self.textScale = stored(Key.textScale, default: 1, in: ReadingPreferences.textScaleRange)
+        self.lineSpacingScale = stored(Key.lineSpacingScale, default: 1, in: ReadingPreferences.lineSpacingRange)
+        self.marginScale = stored(Key.marginScale, default: 1, in: ReadingPreferences.marginRange)
+        self.typeface = ContentTypeface(rawValue: defaults.string(forKey: Key.typeface) ?? "") ?? .serif
+
+        // These three default to on, so the same trick: absent is not false.
+        self.isHapticsEnabled = defaults.object(forKey: Key.hapticsEnabled) as? Bool ?? true
+        self.isAutocorrectEnabled = defaults.object(forKey: Key.autocorrect) as? Bool ?? true
+        self.isFocusModeEnabled = defaults.bool(forKey: Key.focusMode)
         self.mode = Mode(rawValue: defaults.string(forKey: Key.mode) ?? "") ?? .followSystem
         self.lightThemeID = defaults.string(forKey: Key.lightTheme) ?? ThemeCatalog.defaultLightThemeID
         self.darkThemeID = defaults.string(forKey: Key.darkTheme) ?? ThemeCatalog.defaultDarkThemeID

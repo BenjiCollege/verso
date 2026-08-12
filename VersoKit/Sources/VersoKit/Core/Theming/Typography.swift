@@ -135,18 +135,93 @@ private struct VersoTextStyle: ViewModifier {
 
     @ScaledMetric private var size: CGFloat
 
+    @Environment(\.readingPreferences) private var reading
+
     init(role: Typography.Role) {
         self.role = role
         _size = ScaledMetric(wrappedValue: role.pointSize, relativeTo: role.textStyle)
     }
 
+    /// The reader's adjustment sits on top of Dynamic Type rather than replacing
+    /// it, and applies only to content. Chrome keeps the system size, because a
+    /// reader who wants larger prose has not asked for a larger toolbar — and
+    /// scaling the chrome is how you end up with buttons that no longer fit.
+    private var scaledSize: CGFloat {
+        role.family == .content ? size * reading.textScale : size
+    }
+
+    private var family: Typography.Family {
+        role.family == .content ? reading.typeface.family : role.family
+    }
+
     func body(content: Content) -> some View {
-        content
-            .font(.system(size: size, weight: role.weight, design: role.family.design))
+        let size = scaledSize
+        return content
+            .font(.system(size: size, weight: role.weight, design: family.design))
             .tracking(size * role.trackingFraction)
-            .lineSpacing(Typography.lineSpacing(forSize: size, multiple: role.lineHeightMultiple))
+            .lineSpacing(Typography.lineSpacing(
+                forSize: size,
+                multiple: role.lineHeightMultiple * (role.family == .content ? reading.lineSpacingScale : 1)
+            ))
             .textCase(role.isUppercased ? .uppercase : nil)
     }
+}
+
+/// What the reader has asked for, on top of the system's own settings.
+///
+/// Separate from `Theme`, which is the *design* of a page. This is the reader
+/// adjusting it: bigger, looser, narrower, or in a face they get on with. A
+/// theme is chosen once; these get nudged while reading.
+struct ReadingPreferences: Equatable, Sendable {
+    var textScale: Double = 1
+    var lineSpacingScale: Double = 1
+    /// Multiplies the margin, so the column can be narrowed without changing
+    /// the type.
+    var marginScale: Double = 1
+    var typeface: ContentTypeface = .serif
+
+    static let `default` = ReadingPreferences()
+
+    static let textScaleRange: ClosedRange<Double> = 0.8...1.8
+    static let lineSpacingRange: ClosedRange<Double> = 0.85...1.5
+    static let marginRange: ClosedRange<Double> = 0.6...1.5
+}
+
+/// The face content is set in. Chrome is always SF Pro.
+enum ContentTypeface: String, CaseIterable, Identifiable, Sendable {
+    case serif
+    case sans
+    case mono
+
+    var id: String { rawValue }
+
+    var family: Typography.Family {
+        switch self {
+        case .serif: .content
+        case .sans: .chrome
+        case .mono: .mono
+        }
+    }
+
+    var displayName: LocalizedStringResource {
+        switch self {
+        case .serif: "New York"
+        case .sans: "SF Pro"
+        case .mono: "SF Mono"
+        }
+    }
+
+    var summary: LocalizedStringResource {
+        switch self {
+        case .serif: "A book face. The default."
+        case .sans: "Plainer, and a little wider."
+        case .mono: "Fixed width. Good for code and lists."
+        }
+    }
+}
+
+extension EnvironmentValues {
+    @Entry var readingPreferences: ReadingPreferences = .default
 }
 
 /// Constrains content to the 68-character measure at the *scaled* body size, so

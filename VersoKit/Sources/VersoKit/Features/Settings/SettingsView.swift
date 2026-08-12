@@ -9,6 +9,8 @@ struct SettingsView: View {
     @Environment(\.themeCatalog) private var catalog
     @Environment(\.theme) private var theme
     @Environment(\.colorScheme) private var colorScheme
+
+    @State private var isAdjustingReading = false
     @Environment(\.dismiss) private var dismiss
     @Environment(VaultService.self) private var vault
     @Environment(IntelligenceService.self) private var intelligence
@@ -59,11 +61,45 @@ struct SettingsView: View {
                     }
                 }
 
+                Section {
+                    Button {
+                        isAdjustingReading = true
+                    } label: {
+                        LabeledContent("Text size and spacing") {
+                            Text(appearance.typeface.displayName)
+                                .foregroundStyle(theme.inkSecondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                } header: {
+                    Text("Reading")
+                } footer: {
+                    Text("Also reachable while reading, which is where you usually notice you want it.")
+                }
+
                 Section("Editing") {
                     Toggle(isOn: $appearance.isTypewriterEnabled) {
                         Text("Typewriter Scroll")
                     }
                     Text("Keeps the line you're writing at a fixed place on screen instead of letting it drift to the bottom.")
+                        .versoText(.chromeCaption)
+                        .foregroundStyle(theme.inkSecondary)
+
+                    Toggle(isOn: $appearance.isFocusModeEnabled) {
+                        Text("Focus Mode")
+                    }
+                    Text("Dims everything but the paragraph you're writing, and hides the toolbars with it.")
+                        .versoText(.chromeCaption)
+                        .foregroundStyle(theme.inkSecondary)
+
+                    Toggle(isOn: $appearance.isAutocorrectEnabled) {
+                        Text("Autocorrect")
+                    }
+
+                    Toggle(isOn: $appearance.isHapticsEnabled) {
+                        Text("Haptics")
+                    }
+                    Text("The clasp, the checkmark, the fore-edge. Turning this off silences all of them.")
                         .versoText(.chromeCaption)
                         .foregroundStyle(theme.inkSecondary)
                 }
@@ -138,6 +174,10 @@ struct SettingsView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .sheet(isPresented: $isAdjustingReading) {
+                ReadingControlsSheet()
+                    .presentationDetents([.height(320)])
             }
             .sheet(isPresented: $isShowingVault) {
                 VaultGateView()
