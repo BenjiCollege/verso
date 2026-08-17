@@ -1,10 +1,12 @@
 import PhotosUI
+import SwiftData
 import SwiftUI
 
 /// A picture, and what it is of.
 struct ImageBlockView: View {
     let block: Block
 
+    @Environment(\.modelContext) private var context
     @Environment(\.theme) private var theme
     @Environment(\.motion) private var motion
 
@@ -17,7 +19,7 @@ struct ImageBlockView: View {
     var body: some View {
         BlockPayloadEditor(block: block) { (payload: Binding<ImagePayload>) in
             VStack(alignment: .leading, spacing: Layout.Space.snug) {
-                if let image = ImageStore.load(payload.wrappedValue.assetID) {
+                if let image = ImageStore.load(payload.wrappedValue.assetID, in: block.note) {
                     Image(uiImage: image)
                         .resizable()
                         .scaledToFill()
@@ -104,9 +106,18 @@ struct ImageBlockView: View {
                 }
                 // The old file goes with the old payload, or every replacement
                 // leaves a picture on disk that nothing points at.
-                ImageStore.delete(payload.wrappedValue.assetID)
+                guard let note = block.note else {
+                    failure = String(localized: "That image couldn't be read.")
+                    return
+                }
+                ImageStore.delete(payload.wrappedValue.assetID, in: note, context: context)
 
-                let imported = try ImageStore.importImage(data: data, atPageWidth: pageWidth)
+                let imported = try ImageStore.importImage(
+                    data: data,
+                    atPageWidth: pageWidth,
+                    into: note,
+                    context: context
+                )
                 motion.run(.settle) {
                     payload.wrappedValue.assetID = imported.assetID
                     payload.wrappedValue.displayHeight = imported.displayHeight
@@ -118,7 +129,7 @@ struct ImageBlockView: View {
     }
 
     private func replace(_ payload: Binding<ImagePayload>) {
-        ImageStore.delete(payload.wrappedValue.assetID)
+        ImageStore.delete(payload.wrappedValue.assetID, in: block.note, context: context)
         motion.run(.settle) { payload.wrappedValue.assetID = nil }
     }
 }

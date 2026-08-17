@@ -20,9 +20,9 @@ struct SchemaValidityTests {
 
     @Test("The schema contains every model and builds a container")
     func schemaBuilds() throws {
-        #expect(VersoModelContainer.schema.entities.count == 7)
+        #expect(VersoModelContainer.schema.entities.count == 8)
         let names = Set(VersoModelContainer.schema.entities.map(\.name))
-        #expect(names == ["Note", "Block", "MetricEntry", "Version", "AudioAsset", "Folder", "Tag"])
+        #expect(names == ["Note", "Block", "MetricEntry", "Version", "AudioAsset", "ImageAsset", "Folder", "Tag"])
         _ = try VersoModelContainer.makeInMemory()
     }
 
@@ -37,6 +37,7 @@ struct SchemaValidityTests {
         context.insert(MetricEntry())
         context.insert(Version())
         context.insert(AudioAsset())
+        context.insert(ImageAsset())
         context.insert(Folder())
         context.insert(Tag())
         try context.save()
@@ -46,6 +47,7 @@ struct SchemaValidityTests {
         #expect(try context.fetchCount(FetchDescriptor<MetricEntry>()) == 1)
         #expect(try context.fetchCount(FetchDescriptor<Version>()) == 1)
         #expect(try context.fetchCount(FetchDescriptor<AudioAsset>()) == 1)
+        #expect(try context.fetchCount(FetchDescriptor<ImageAsset>()) == 1)
         #expect(try context.fetchCount(FetchDescriptor<Folder>()) == 1)
         #expect(try context.fetchCount(FetchDescriptor<Tag>()) == 1)
     }
@@ -63,18 +65,21 @@ struct SchemaValidityTests {
         #expect(VersoModelContainer.cloudKitContainerIdentifier.hasPrefix("iCloud."))
     }
 
-    @Test("Deleting a note cascades to its versions and audio")
+    @Test("Deleting a note cascades to its versions, audio and pictures")
     func deleteCascades() throws {
         let context = try makeContext()
         let note = Note(title: "Ephemeral")
         let version = Version(snapshot: Data([0x01]))
         let audio = AudioAsset(duration: 12)
+        let image = ImageAsset(data: Data([0xFF, 0xD8]))
 
         context.insert(note)
         context.insert(version)
         context.insert(audio)
+        context.insert(image)
         version.note = note
         audio.note = note
+        image.note = note
         try context.save()
 
         context.delete(note)
@@ -83,6 +88,7 @@ struct SchemaValidityTests {
         #expect(try context.fetchCount(FetchDescriptor<Note>()) == 0)
         #expect(try context.fetchCount(FetchDescriptor<Version>()) == 0)
         #expect(try context.fetchCount(FetchDescriptor<AudioAsset>()) == 0)
+        #expect(try context.fetchCount(FetchDescriptor<ImageAsset>()) == 0)
     }
 
     @Test("A block with no note is legal, since every relationship is optional")

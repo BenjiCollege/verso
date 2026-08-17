@@ -172,7 +172,7 @@ enum Printed {
         var body: some View {
             let payload = try? block.decoded(as: ImagePayload.self)
             VStack(alignment: .leading, spacing: Layout.Space.tight) {
-                if let image = ImageStore.load(payload?.assetID) {
+                if let image = ImageStore.load(payload?.assetID, in: block.note) {
                     Image(uiImage: image)
                         .resizable()
                         .scaledToFit()

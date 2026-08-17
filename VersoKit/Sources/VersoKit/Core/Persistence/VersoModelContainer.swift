@@ -23,6 +23,7 @@ enum VersoModelContainer {
         MetricEntry.self,
         Version.self,
         AudioAsset.self,
+        ImageAsset.self,
         Folder.self,
         Tag.self,
     ])

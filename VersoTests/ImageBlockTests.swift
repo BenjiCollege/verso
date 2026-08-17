@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 import Testing
 import UIKit
 @testable import VersoKit
@@ -7,6 +8,7 @@ import UIKit
 /// registry refused it cleanly, which is right for a gap and wrong for a notes
 /// app, since pasting a photo is the first thing most people try.
 @Suite("Image blocks")
+@MainActor
 struct ImageBlockTests {
 
     private func makeImage(size: CGSize) -> Data {
@@ -22,6 +24,20 @@ struct ImageBlockTests {
     func registryImplementsImages() {
         #expect(BlockRegistry.shared.isImplemented(.image))
         #expect(throws: Never.self) { _ = try BlockRegistry.shared.makeDefaultData(for: .image) }
+    }
+
+    @Test("A picture reaches a duplicate of its note")
+    func duplicateCarriesImages() throws {
+        let context = ModelContext(try VersoModelContainer.makeInMemory())
+        let note = Note(title: "Album")
+        context.insert(note)
+        let payload = try ImageStore.importImage(
+            data: makeImage(size: CGSize(width: 200, height: 100)),
+            atPageWidth: 320, into: note, context: context
+        )
+
+        let copy = note.duplicated(into: context, titleSuffix: "Copy")
+        #expect(ImageStore.load(payload.assetID, in: copy) != nil)
     }
 
     @Test("A payload round-trips")
@@ -56,16 +72,20 @@ struct ImageBlockTests {
     /// The one that would otherwise be found by a full phone: a camera writes
     /// about 4000px and a note with a dozen of those is a problem, not a
     /// document.
-    @Test("Importing downscales a large picture and writes a readable file")
+    @Test("Importing downscales a large picture and attaches it to the note")
     func importDownscales() throws {
+        let context = ModelContext(try VersoModelContainer.makeInMemory())
+        let note = Note(title: "Album")
+        context.insert(note)
+
         let data = makeImage(size: CGSize(width: 4_000, height: 3_000))
-        let payload = try ImageStore.importImage(data: data, atPageWidth: 320)
+        let payload = try ImageStore.importImage(
+            data: data, atPageWidth: 320, into: note, context: context
+        )
 
         let assetID = try #require(payload.assetID)
-        defer { ImageStore.delete(assetID) }
-
-        #expect(ImageStore.exists(assetID))
-        let loaded = try #require(ImageStore.load(assetID))
+        #expect(note.images?.count == 1)
+        let loaded = try #require(ImageStore.load(assetID, in: note))
         #expect(max(loaded.size.width, loaded.size.height) <= ImageStore.maximumPixelSize)
         // 4:3 at 320 wide is 240 tall, and the height has to survive the resize.
         #expect(abs(payload.displayHeight - 240) < 1)
@@ -73,8 +93,13 @@ struct ImageBlockTests {
 
     @Test("Unreadable bytes are refused rather than stored")
     func rejectsRubbish() {
+        let context = ModelContext(try! VersoModelContainer.makeInMemory())
+        let note = Note()
+        context.insert(note)
         #expect(throws: (any Error).self) {
-            _ = try ImageStore.importImage(data: Data("not an image".utf8), atPageWidth: 320)
+            _ = try ImageStore.importImage(
+                data: Data("not an image".utf8), atPageWidth: 320, into: note, context: context
+            )
         }
     }
 

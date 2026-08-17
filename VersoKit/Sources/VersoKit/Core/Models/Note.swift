@@ -33,6 +33,9 @@ final class Note {
     @Relationship(deleteRule: .cascade, inverse: \AudioAsset.note)
     var audio: [AudioAsset]? = []
 
+    @Relationship(deleteRule: .cascade, inverse: \ImageAsset.note)
+    var images: [ImageAsset]? = []
+
     init(
         id: UUID = UUID(),
         title: String = "",
@@ -136,6 +139,16 @@ extension Note {
         copy.folder = folder
         copy.tags = tags
         context.insert(copy)
+
+        // Pictures are copied with their ids intact, so the blocks that point
+        // at them still do. Without this the copy's images would resolve
+        // against the original note and vanish the moment it was deleted.
+        for asset in images ?? [] {
+            let assetCopy = ImageAsset(id: asset.id, createdAt: asset.createdAt, data: asset.data)
+            context.insert(assetCopy)
+            assetCopy.note = copy
+            copy.images = (copy.images ?? []) + [assetCopy]
+        }
 
         for block in orderedBlocks {
             let blockCopy = Block(
