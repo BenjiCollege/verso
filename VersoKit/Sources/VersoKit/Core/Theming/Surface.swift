@@ -142,18 +142,12 @@ extension Date {
 
         if elapsed < 60 { return String(localized: "Just now") }
         if elapsed < 7 * 24 * 3600 {
-            return RelativeDateTimeFormatter.verso.localizedString(for: self, relativeTo: now)
+            // A format style rather than a shared `RelativeDateTimeFormatter`:
+            // that class is not `Sendable`, so a static one is shared mutable
+            // state. This is a value, built and discarded per call, and costs
+            // nothing worth caching.
+            return formatted(.relative(presentation: .numeric, unitsStyle: .abbreviated))
         }
         return formatted(date: .abbreviated, time: .omitted)
     }
-}
-
-extension RelativeDateTimeFormatter {
-    /// One formatter, reused. Building one costs enough to matter in a list
-    /// that rebuilds a row per keystroke while searching.
-    static let verso: RelativeDateTimeFormatter = {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter
-    }()
 }
