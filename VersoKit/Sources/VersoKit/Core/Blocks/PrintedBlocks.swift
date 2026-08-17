@@ -163,6 +163,30 @@ enum Printed {
         }
     }
 
+    /// The picture itself. Exports as what it is, since a JPEG is already
+    /// something `ImageRenderer` can draw.
+    struct ImageBlock: View {
+        let block: Block
+        @Environment(\.theme) private var theme
+
+        var body: some View {
+            let payload = try? block.decoded(as: ImagePayload.self)
+            VStack(alignment: .leading, spacing: Layout.Space.tight) {
+                if let image = ImageStore.load(payload?.assetID) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                if let caption = payload?.caption, !caption.isEmpty {
+                    Text(caption)
+                        .versoText(.footnote)
+                        .foregroundStyle(theme.inkSecondary)
+                }
+            }
+        }
+    }
+
     struct AudioBlock: View {
         let block: Block
         @Environment(\.theme) private var theme

@@ -73,6 +73,7 @@ struct BlockRegistry: Sendable {
     static let shared = BlockRegistry(entries: [
         // Phase 1
         entry(TextPayload.self),
+        entry(ImagePayload.self),
         entry(HeadingPayload.self),
         entry(ChecklistPayload.self),
         entry(ListPayload.self),

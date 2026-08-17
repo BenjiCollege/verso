@@ -20,6 +20,8 @@ struct BlockRenderer: View {
         switch block.type {
         case .text:
             if isPrinted { Printed.TextBlock(block: block) } else { TextBlockView(block: block) }
+        case .image:
+            if isPrinted { Printed.ImageBlock(block: block) } else { ImageBlockView(block: block) }
         case .heading:
             HeadingBlockView(block: block)
         case .checklist:
