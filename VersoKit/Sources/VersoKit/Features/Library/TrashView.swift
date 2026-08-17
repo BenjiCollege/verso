@@ -46,7 +46,9 @@ struct TrashView: View {
         List {
             ForEach(notes) { note in
                 NoteRowView(note: note)
-                    .listRowBackground(theme.stock)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets())
                     .swipeActions(edge: .leading) {
                         Button {
                             restore(note)
@@ -65,7 +67,10 @@ struct TrashView: View {
             }
         }
         .listStyle(.plain)
+        .listRowSpacing(Layout.Space.snug)
         .scrollContentBackground(.hidden)
+        .contentMargins(.horizontal, Layout.Space.regular, for: .scrollContent)
+        .background(theme.canvas.ignoresSafeArea())
     }
 
     private func restore(_ note: Note) {

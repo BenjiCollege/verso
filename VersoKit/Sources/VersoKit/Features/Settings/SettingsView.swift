@@ -47,8 +47,8 @@ struct SettingsView: View {
                     .pickerStyle(.segmented)
 
                     Text(appearance.mode == .followSystem
-                        ? "Verso follows Light and Dark Mode, using the \(colorScheme == .dark ? "dark" : "light") theme you pick below. Choose one built for the other and Verso will use it always."
-                        : "Verso stays in this theme whatever iOS is doing.")
+                        ? "Follows Light and Dark Mode. Pick a theme built for the other and Verso keeps it always."
+                        : "Stays in this theme whatever iOS does.")
                         .versoText(.chromeCaption)
                         .foregroundStyle(theme.inkSecondary)
                 }
@@ -82,7 +82,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Theme")
                 } footer: {
-                    Text("Themes you make live on this device. They don't sync, and they aren't part of a note — a note carrying one keeps the look only here.")
+                    Text("Themes you make stay on this device.")
                 }
 
                 Section("Paper") {
@@ -104,21 +104,21 @@ struct SettingsView: View {
                 } header: {
                     Text("Reading")
                 } footer: {
-                    Text("Also reachable while reading, which is where you usually notice you want it.")
+                    Text("Also reachable while reading.")
                 }
 
                 Section("Editing") {
                     Toggle(isOn: $appearance.isTypewriterEnabled) {
                         Text("Typewriter Scroll")
                     }
-                    Text("Keeps the line you're writing at a fixed place on screen instead of letting it drift to the bottom.")
+                    Text("Holds the line you're writing in one place.")
                         .versoText(.chromeCaption)
                         .foregroundStyle(theme.inkSecondary)
 
                     Toggle(isOn: $appearance.isFocusModeEnabled) {
                         Text("Focus Mode")
                     }
-                    Text("Dims everything but the paragraph you're writing, and hides the toolbars with it.")
+                    Text("Dims everything but the paragraph you're in.")
                         .versoText(.chromeCaption)
                         .foregroundStyle(theme.inkSecondary)
 
@@ -129,7 +129,7 @@ struct SettingsView: View {
                     Toggle(isOn: $appearance.isHapticsEnabled) {
                         Text("Haptics")
                     }
-                    Text("The clasp, the checkmark, the fore-edge. Turning this off silences all of them.")
+                    Text("The clasp, the checkmark, the fore-edge.")
                         .versoText(.chromeCaption)
                         .foregroundStyle(theme.inkSecondary)
                 }
@@ -148,7 +148,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Recordings")
                 } footer: {
-                    Text("\(usage.recordingCount) recordings. Device-only ones never enter iCloud at all, so they can't be recovered if you lose this device.")
+                    Text("\(usage.recordingCount) recordings. Device-only ones can't be recovered if you lose this phone.")
                 }
 
                 Section("Vault") {
@@ -189,15 +189,21 @@ struct SettingsView: View {
                 } header: {
                     Text("Intelligence")
                 } footer: {
-                    Text("Titles, summaries and suggestions are worked out on this device either way. Nothing you write is ever sent anywhere.")
+                    Text("Worked out on this device. Nothing you write is sent anywhere.")
                 }
 
                 Section("Privacy") {
-                    Text("Verso has no server and no analytics. Your notes sync through your own iCloud account and nowhere else.")
+                    Text("No server, no analytics. Your notes sync through your own iCloud.")
                         .versoText(.chromeCaption)
                         .foregroundStyle(theme.inkSecondary)
                 }
             }
+            // Rows on the card colour, the form on the canvas, so Settings is
+            // built from the same two surfaces as the library rather than from
+            // whatever grey the system had to hand.
+            .listRowBackground(theme.card)
+            .scrollContentBackground(.hidden)
+            .background(theme.canvas.ignoresSafeArea())
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

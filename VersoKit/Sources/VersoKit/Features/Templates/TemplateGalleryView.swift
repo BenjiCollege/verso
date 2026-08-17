@@ -24,7 +24,7 @@ struct TemplateGalleryView: View {
         NavigationStack {
             List {
                 if !userSection.isEmpty {
-                    Section("Yours") {
+                    Section {
                         ForEach(userSection) { template in
                             row(template)
                                 .swipeActions(edge: .trailing) {
@@ -35,13 +35,29 @@ struct TemplateGalleryView: View {
                                     }
                                 }
                                 .contextMenu { userTemplateMenu(template) }
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .listRowInsets(EdgeInsets())
                         }
+                    } header: {
+                        SectionLabel(title: "Yours", detail: "\(userSection.count)")
                     }
                 }
 
                 ForEach(sections, id: \.key) { section in
-                    Section(section.title) {
-                        ForEach(section.templates) { row($0) }
+                    Section {
+                        ForEach(section.templates) { template in
+                            row(template)
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .listRowInsets(EdgeInsets())
+                        }
+                    } header: {
+                        Text(section.title)
+                            .versoText(.metadata)
+                            .foregroundStyle(theme.inkTertiary)
+                            .padding(.horizontal, Layout.Space.snug)
+                            .padding(.top, Layout.Space.snug)
                     }
                 }
 
@@ -49,7 +65,11 @@ struct TemplateGalleryView: View {
                     ContentUnavailableView.search(text: query)
                 }
             }
-            .listStyle(.insetGrouped)
+            .listStyle(.plain)
+            .listRowSpacing(Layout.Space.snug)
+            .scrollContentBackground(.hidden)
+            .contentMargins(.horizontal, Layout.Space.regular, for: .scrollContent)
+            .background(theme.canvas.ignoresSafeArea())
             .searchable(text: $query, prompt: Text("Search templates"))
             .navigationTitle("New Note")
             .navigationBarTitleDisplayMode(.inline)
@@ -92,12 +112,17 @@ struct TemplateGalleryView: View {
             onSelect(template)
             dismiss()
         } label: {
-            HStack(spacing: Layout.Space.cosy) {
+            HStack(alignment: .top, spacing: Layout.Space.cosy) {
+                // The glyph carried in a tinted tile rather than loose. A row
+                // of bare symbols at different widths never lines up, and a
+                // gallery is read as a column.
                 Image(systemName: template.systemImage)
+                    .font(.system(size: Layout.Space.regular))
                     .foregroundStyle(theme.accent)
-                    .frame(width: Layout.Space.loose)
+                    .frame(width: Layout.Space.airy, height: Layout.Space.airy)
+                    .background(theme.inset, in: .rect(cornerRadius: Layout.Radius.tight))
 
-                VStack(alignment: .leading, spacing: Layout.Space.hair) {
+                VStack(alignment: .leading, spacing: Layout.Space.tight) {
                     Text(template.name)
                         .versoText(.chromeBody)
                         .foregroundStyle(theme.ink)
@@ -107,15 +132,20 @@ struct TemplateGalleryView: View {
                             .versoText(.chromeCaption)
                             .foregroundStyle(theme.inkSecondary)
                             .lineLimit(2)
+                            .multilineTextAlignment(.leading)
                     }
 
-                    Text("\(template.blocks.count) blocks")
-                        .versoText(.metadata)
-                        .foregroundStyle(theme.inkTertiary)
+                    HStack(spacing: Layout.Space.tight) {
+                        VersoPill(title: "\(template.blocks.count)", systemImage: "square.stack")
+                        if template.isUserAuthored {
+                            VersoPill(title: String(localized: "Yours"))
+                        }
+                    }
                 }
 
                 Spacer(minLength: 0)
             }
+            .versoCard()
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
