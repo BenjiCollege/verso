@@ -41,7 +41,9 @@ struct LibraryView: View {
                     noteList
                 }
             }
-            .background(theme.stock.ignoresSafeArea())
+            // The canvas, not the paper. Cards are the paper now, and a card
+            // the same colour as what it sits on is not a card.
+            .background(theme.canvas.ignoresSafeArea())
             // Registered once, here. The editor pushes with NavigationLink(value:)
             // rather than declaring its own destination, which would make the
             // view's type infinitely recursive the moment a note links to a note.
@@ -117,27 +119,45 @@ struct LibraryView: View {
 
     // MARK: - Content
 
+    /// A `List` still, rather than a `ScrollView` of cards.
+    ///
+    /// The cards are rows with the separators and the row background taken
+    /// away. Rebuilding this as a stack would have meant rebuilding swipe
+    /// actions, drag-and-drop and the reordering VoiceOver already understands —
+    /// a lot of working behaviour traded for a layout the row insets give up
+    /// without argument.
     private var noteList: some View {
         List {
             if !pinnedNotes.isEmpty {
-                Section("Pinned") {
+                Section {
                     ForEach(pinnedNotes) { row($0) }
+                } header: {
+                    SectionLabel(title: "Pinned")
                 }
             }
 
             Section {
                 ForEach(unpinnedNotes) { row($0) }
+            } header: {
+                SectionLabel(
+                    title: pinnedNotes.isEmpty ? "All notes" : "Recent",
+                    detail: "\(notes.count)"
+                )
             }
         }
         .listStyle(.plain)
+        .listRowSpacing(Layout.Space.snug)
         .scrollContentBackground(.hidden)
+        .contentMargins(.horizontal, Layout.Space.regular, for: .scrollContent)
     }
 
     private func row(_ note: Note) -> some View {
         NavigationLink(value: note) {
             NoteRowView(note: note)
         }
-        .listRowBackground(theme.stock)
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets())
         .swipeActions(edge: .trailing) {
             Button(role: .destructive) {
                 trash(note)
@@ -186,23 +206,22 @@ struct LibraryView: View {
             List {
                 ForEach(hits) { hit in
                     if let note = notes.first(where: { $0.id == hit.noteID }) {
+                        // The excerpt is why this note matched, so it belongs
+                        // inside the card with it rather than stacked under a
+                        // second one.
                         NavigationLink(value: note) {
-                            VStack(alignment: .leading, spacing: Layout.Space.hair) {
-                                NoteRowView(note: note)
-                                if !hit.excerpt.isEmpty {
-                                    Text(hit.excerpt)
-                                        .versoText(.chromeCaption)
-                                        .foregroundStyle(theme.inkSecondary)
-                                        .lineLimit(2)
-                                }
-                            }
+                            NoteRowView(note: note, excerpt: hit.excerpt)
                         }
-                        .listRowBackground(theme.stock)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets())
                     }
                 }
             }
             .listStyle(.plain)
+            .listRowSpacing(Layout.Space.snug)
             .scrollContentBackground(.hidden)
+            .contentMargins(.horizontal, Layout.Space.regular, for: .scrollContent)
         }
     }
 
@@ -228,15 +247,32 @@ struct LibraryView: View {
         hits = SemanticIndex().search(trimmed, in: entries)
     }
 
+    /// An invitation, not an apology — and three words shorter than the
+    /// apology was.
     private var emptyState: some View {
-        ContentUnavailableView {
-            Label("No notes yet", systemImage: "book.closed")
-        } description: {
-            Text("Start from a blank page or pick a template.")
-        } actions: {
-            Button("New Note") { isChoosingTemplate = true }
-                .buttonStyle(.borderedProminent)
+        VStack(spacing: Layout.Space.regular) {
+            Image(systemName: "book.closed")
+                .font(.system(size: Layout.Space.airy, weight: .light))
+                .foregroundStyle(theme.inkTertiary)
+
+            Text("Start a page")
+                .versoText(.title)
+                .foregroundStyle(theme.ink)
+
+            Button {
+                isChoosingTemplate = true
+            } label: {
+                Text("Choose a template")
+                    .versoText(.chromeLabel)
+                    .padding(.horizontal, Layout.Space.loose)
+                    .padding(.vertical, Layout.Space.cosy)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(theme.stock)
+            .background(theme.accent, in: .rect(cornerRadius: Layout.Radius.capsule))
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(Layout.Space.loose)
     }
 
     @ToolbarContentBuilder
