@@ -156,7 +156,7 @@ struct BlockRecoveryBanner: View {
         }
         .padding(.horizontal, Layout.Space.regular)
         .padding(.vertical, Layout.Space.cosy)
-        .background(theme.stock, in: .rect(cornerRadius: Layout.Radius.regular))
+        .background(theme.card, in: .rect(cornerRadius: Layout.Radius.regular))
         .overlay(
             RoundedRectangle(cornerRadius: Layout.Radius.regular)
                 .strokeBorder(theme.rule, lineWidth: Layout.hairline)

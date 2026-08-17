@@ -27,7 +27,7 @@ struct TrashView: View {
                     list
                 }
             }
-            .background(theme.stock.ignoresSafeArea())
+            .background(theme.canvas.ignoresSafeArea())
             .navigationTitle("Recently Deleted")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

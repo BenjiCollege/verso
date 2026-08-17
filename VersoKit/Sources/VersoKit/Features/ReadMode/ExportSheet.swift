@@ -30,7 +30,7 @@ struct ExportSheet: View {
                         row(candidate)
                     }
                 } footer: {
-                    Text("Verso has no server. Whatever you share is a file that leaves your device only when you send it.")
+                    Text("No server. A share is a file, and it leaves only when you send it.")
                 }
 
                 if format == .markdown {
@@ -70,6 +70,9 @@ struct ExportSheet: View {
                     }
                 }
             }
+            .listRowBackground(theme.card)
+            .scrollContentBackground(.hidden)
+            .background(theme.canvas.ignoresSafeArea())
             .navigationTitle("Share")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -89,11 +92,15 @@ struct ExportSheet: View {
             motion.run(.snap) { format = candidate }
         } label: {
             HStack(spacing: Layout.Space.cosy) {
+                // The same tinted tile the gallery uses, so a chooser is a
+                // chooser wherever you meet one.
                 Image(systemName: candidate.systemImage)
+                    .font(.system(size: Layout.Space.regular))
                     .foregroundStyle(theme.accent)
-                    .frame(width: Layout.Space.loose)
+                    .frame(width: Layout.Space.airy, height: Layout.Space.airy)
+                    .background(theme.inset, in: .rect(cornerRadius: Layout.Radius.tight))
 
-                VStack(alignment: .leading, spacing: Layout.Space.hair) {
+                VStack(alignment: .leading, spacing: Layout.Space.tight) {
                     Text(candidate.displayName)
                         .versoText(.chromeBody)
                         .foregroundStyle(theme.ink)

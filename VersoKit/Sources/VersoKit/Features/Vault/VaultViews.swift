@@ -167,7 +167,7 @@ struct LockedNoteView: View {
             Button("Open Vault") { isShowingGate = true }
                 .buttonStyle(.borderedProminent)
         }
-        .background(theme.stock.ignoresSafeArea())
+        .background(theme.canvas.ignoresSafeArea())
         .sheet(isPresented: $isShowingGate) {
             VaultGateView()
         }
