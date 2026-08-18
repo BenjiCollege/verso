@@ -7,10 +7,13 @@ import SwiftUI
 /// horizontal `ScrollView`, which hides the tags you have behind a swipe, or a
 /// `Grid`, which forces every tag to the width of the longest — and a tag is as
 /// wide as its word.
-struct FlowLayout: Layout {
+/// `SwiftUI.Layout` spelled out: this project has a `Layout` of its own — the
+/// spacing and radius tokens — and the bare name resolves to that one, which is
+/// an enum and cannot be inherited from. Same collision as `Tag`.
+struct FlowLayout: SwiftUI.Layout {
     var spacing: CGFloat = 8
 
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: LayoutSubviews, cache: inout ()) -> CGSize {
         let width = proposal.replacingUnspecifiedDimensions().width
         let rows = arrange(subviews: subviews, inWidth: width)
 
@@ -23,7 +26,7 @@ struct FlowLayout: Layout {
     func placeSubviews(
         in bounds: CGRect,
         proposal: ProposedViewSize,
-        subviews: Subviews,
+        subviews: LayoutSubviews,
         cache: inout ()
     ) {
         var y = bounds.minY
@@ -55,7 +58,7 @@ struct FlowLayout: Layout {
     /// Run by both `sizeThatFits` and `placeSubviews`, so the height reported
     /// and the height used are worked out the same way — the usual cause of a
     /// flow layout that clips its last row is two different answers.
-    private func arrange(subviews: Subviews, inWidth width: CGFloat) -> [Row] {
+    private func arrange(subviews: LayoutSubviews, inWidth width: CGFloat) -> [Row] {
         guard width > 0 else { return [] }
 
         var rows: [Row] = []
