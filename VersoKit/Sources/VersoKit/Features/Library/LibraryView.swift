@@ -19,8 +19,14 @@ struct LibraryView: View {
     )
     private var notes: [Note]
 
-    private var pinnedNotes: [Note] { notes.filter(\.isPinned) }
-    private var unpinnedNotes: [Note] { notes.filter { !$0.isPinned } }
+    /// Filtered in memory rather than by the query. Folder and tag membership
+    /// are to-many relationships, which `#Predicate` cannot reach without a
+    /// subquery per note — and these notes are already loaded to be drawn.
+    private var visibleNotes: [Note] { notes.filter(filter.matches) }
+
+    private var pinnedNotes: [Note] { visibleNotes.filter(\.isPinned) }
+    private var unpinnedNotes: [Note] { visibleNotes.filter { !$0.isPinned } }
+    private var unfiledCount: Int { notes.count(where: LibraryFilter.unfiled.matches) }
 
     @State private var isChoosingTemplate = false
     @State private var isCapturing = false
@@ -29,6 +35,8 @@ struct LibraryView: View {
     @State private var isShowingSettings = false
     @State private var isShowingTrash = false
     @State private var failure: String?
+    @State private var filter: LibraryFilter = .all
+    @State private var organising: Note?
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -38,7 +46,14 @@ struct LibraryView: View {
                 } else if notes.isEmpty {
                     emptyState
                 } else {
-                    noteList
+                    VStack(spacing: 0) {
+                        LibraryFilterBar(filter: $filter, unfiledCount: unfiledCount)
+                        if visibleNotes.isEmpty {
+                            filteredEmptyState
+                        } else {
+                            noteList
+                        }
+                    }
                 }
             }
             // The canvas, not the paper. Cards are the paper now, and a card
@@ -102,6 +117,9 @@ struct LibraryView: View {
             .sheet(isPresented: $isShowingSettings) {
                 SettingsView()
             }
+            .sheet(item: $organising) { note in
+                NoteOrganiseSheet(note: note)
+            }
             .sheet(isPresented: $isShowingTrash) {
                 TrashView()
             }
@@ -141,7 +159,7 @@ struct LibraryView: View {
             } header: {
                 SectionLabel(
                     title: pinnedNotes.isEmpty ? "All notes" : "Recent",
-                    detail: "\(notes.count)"
+                    detail: "\(visibleNotes.count)"
                 )
             }
         }
@@ -166,6 +184,11 @@ struct LibraryView: View {
             }
         }
         .contextMenu {
+            Button {
+                organising = note
+            } label: {
+                Label("Organise", systemImage: "folder")
+            }
             Button {
                 duplicate(note)
             } label: {
@@ -245,6 +268,24 @@ struct LibraryView: View {
             )
         }
         hits = SemanticIndex().search(trimmed, in: entries)
+    }
+
+    /// A filter that matches nothing. Different from an empty library, and
+    /// worth saying differently: the notes exist, they are just not here.
+    private var filteredEmptyState: some View {
+        VStack(spacing: Layout.Space.cosy) {
+            Text("Nothing here")
+                .versoText(.title)
+                .foregroundStyle(theme.ink)
+            Button("Show all") {
+                motion.run(.snap) { filter = .all }
+            }
+            .versoText(.chromeLabel)
+            .buttonStyle(.plain)
+            .foregroundStyle(theme.accent)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(Layout.Space.loose)
     }
 
     /// An invitation, not an apology — and three words shorter than the
