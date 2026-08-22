@@ -479,7 +479,7 @@ the biometric prompt and iCloud Keychain sync need hardware.
 
 ### Coverage
 
-**27.5% of VersoKit by line.** Run it yourself, after a test build:
+**29.3% of VersoKit by line.** Run it yourself, after a full test build:
 
 ```bash
 scripts/coverage.sh
@@ -491,19 +491,23 @@ whole app is a package — so the built-in report described `VersoApp.swift` and
 `VersoWidgetBundle.swift`, fourteen lines, and looked like an answer. The
 profile data was always complete; only the reporting was missing.
 
+Take the figure from a *complete* run. A partial one — `-only-testing:` while
+working on a single suite — leaves partial profile data behind, and the script
+will happily report it as though it were the whole picture.
+
 It is reported, not enforced. The shape matters more than the total:
 
 | | |
 |---|---|
-| `Core/Models`, `Core/Motion`, `Core/Persistence`, `Core/Templates` | 83–92% |
-| `Core/Blocks`, `Core/Schedule`, `Core/Theming` | 66–72% |
-| `Core/Security`, `Core/Location`, `Core/Intelligence`, `Core/Search`, `Core/Export` | 44–61% |
-| `Core/Metrics`, `Core/Documents`, `Core/Audio`, `Core/Timers`, `Core/Haptics` | 5–37% |
-| `Features/*` | 0–19% |
+| `Core/Ink`, `Core/Models`, `Core/Motion`, `Core/Persistence`, `Core/Templates` | 83–98% |
+| `Core/Support`, `Core/Schedule`, `Core/Blocks`, `Core/Theming` | 64–73% |
+| `Core/Security`, `Core/Location`, `Core/Intelligence`, `Core/Export`, `Core/Search` | 44–61% |
+| `Core/Haptics`, `Core/Timers`, `Core/Audio`, `Core/Metrics`, `Core/Documents` | 5–37% |
+| `Features/*` | 0–39% |
 
 The engine is tested and the screens are not, which is the intended shape — a
 SwiftUI view has no seam a unit test can reach, and there are no UI tests. The
-number to be uncomfortable about is not the 27.5%; it is any file under `Core/`
+number to be uncomfortable about is not the 29.3%; it is any file under `Core/`
 still in the bottom band, because that is logic with a seam and no test through
 it. `Core/Ink` was at 0% until `InkTimelineTests` was written, and it was pure,
 deterministic, user-visible logic the whole time.
