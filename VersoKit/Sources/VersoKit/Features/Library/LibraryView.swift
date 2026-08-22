@@ -24,6 +24,13 @@ struct LibraryView: View {
     /// subquery per note — and these notes are already loaded to be drawn.
     private var visibleNotes: [Note] { notes.filter(filter.matches) }
 
+    /// Built once per render rather than searched per row. A hit list and a
+    /// note list are both O(n), and pairing them up by linear search made
+    /// drawing results quadratic in the size of the library.
+    private var notesByID: [UUID: Note] {
+        Dictionary(notes.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+    }
+
     private var pinnedNotes: [Note] { visibleNotes.filter(\.isPinned) }
     private var unpinnedNotes: [Note] { visibleNotes.filter { !$0.isPinned } }
     private var unfiledCount: Int { notes.count(where: LibraryFilter.unfiled.matches) }
@@ -32,6 +39,9 @@ struct LibraryView: View {
     @State private var isCapturing = false
     @State private var query = ""
     @State private var hits: [SearchHit] = []
+    /// Built on the first search and kept, so the embedding model is loaded
+    /// once per session rather than once per query.
+    @State private var searchSource: SearchIndexSource?
     @State private var isShowingSettings = false
     @State private var isShowingTrash = false
     @State private var failure: String?
@@ -226,9 +236,13 @@ struct LibraryView: View {
         if hits.isEmpty {
             ContentUnavailableView.search(text: query)
         } else {
+            // Bound once here, deliberately. Read inside the `ForEach` closure
+            // it would be rebuilt per row, which is the quadratic behaviour it
+            // exists to remove, only with more allocation.
+            let byID = notesByID
             List {
                 ForEach(hits) { hit in
-                    if let note = notes.first(where: { $0.id == hit.noteID }) {
+                    if let note = byID[hit.noteID] {
                         // The excerpt is why this note matched, so it belongs
                         // inside the card with it rather than stacked under a
                         // second one.
@@ -248,6 +262,12 @@ struct LibraryView: View {
         }
     }
 
+    /// Searching happens on `SearchIndexSource`, not here.
+    ///
+    /// Building the entries means decoding every block of every note, and
+    /// scoring them loads an embedding model — neither of which may run on the
+    /// actor that has to keep the list at 60fps while someone is still typing.
+    /// The source is held across searches so the model is loaded once.
     private func runSearch() async {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
@@ -257,17 +277,12 @@ struct LibraryView: View {
         try? await Task.sleep(for: .milliseconds(200))
         guard !Task.isCancelled else { return }
 
-        let entries = notes.map { note in
-            SemanticIndex.Entry(
-                noteID: note.id,
-                title: note.title,
-                text: VaultPolicy.isEligibleForIndexing(note)
-                    ? note.orderedBlocks.map { BlockRegistry.shared.plainText(for: $0) }.joined(separator: "\n")
-                    : "",
-                isLocked: !VaultPolicy.isEligibleForIndexing(note)
-            )
-        }
-        hits = SemanticIndex().search(trimmed, in: entries)
+        let source = searchSource ?? SearchIndexSource(modelContainer: context.container)
+        searchSource = source
+
+        let found = await source.search(trimmed)
+        guard !Task.isCancelled else { return }
+        hits = found
     }
 
     /// A filter that matches nothing. Different from an empty library, and
