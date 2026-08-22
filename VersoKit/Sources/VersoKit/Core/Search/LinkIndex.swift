@@ -69,6 +69,27 @@ actor LinkIndexBuilder {
 
     nonisolated static let logger = Logger(subsystem: "com.verso.notes", category: "links")
 
+    /// Titles are matched case- and whitespace-insensitively. First note wins a
+    /// duplicate title, deterministically by id.
+    ///
+    /// Deliberately recomputed on every call rather than cached. Caching it
+    /// looks like an easy win — `edges(for:)` re-reads the whole library to
+    /// patch one note — but it is the wrong trade twice over: `noteDidChange`
+    /// fires once per editor dismiss, not per keystroke, so there is little to
+    /// win; and a cache would have to *remove* a renamed note's old title as
+    /// well as add its new one, or a `[[Old Title]]` elsewhere keeps resolving
+    /// to a note that is no longer called that. Correct beats clever on a cold
+    /// path.
+    private static func titleMap(of notes: [Note]) -> [String: UUID] {
+        var byTitle: [String: UUID] = [:]
+        for note in notes.sorted(by: { $0.id.uuidString < $1.id.uuidString }) {
+            let key = titleKey(note.title)
+            guard !key.isEmpty, byTitle[key] == nil else { continue }
+            byTitle[key] = note.id
+        }
+        return byTitle
+    }
+
     func build() -> LinkGraph {
         var graph = LinkGraph()
 
@@ -80,14 +101,7 @@ actor LinkIndexBuilder {
             return graph
         }
 
-        // Titles are matched case- and whitespace-insensitively. First note
-        // wins a duplicate title, deterministically by id.
-        var byTitle: [String: UUID] = [:]
-        for note in notes.sorted(by: { $0.id.uuidString < $1.id.uuidString }) {
-            let key = Self.titleKey(note.title)
-            guard !key.isEmpty, byTitle[key] == nil else { continue }
-            byTitle[key] = note.id
-        }
+        let byTitle = Self.titleMap(of: notes)
 
         for note in notes {
             let (targets, unresolved) = Self.edges(from: note, titles: byTitle)
@@ -103,13 +117,7 @@ actor LinkIndexBuilder {
         guard let note = try? modelContext.fetch(descriptor).first else { return nil }
 
         let all = (try? modelContext.fetch(FetchDescriptor<Note>())) ?? []
-        var byTitle: [String: UUID] = [:]
-        for candidate in all.sorted(by: { $0.id.uuidString < $1.id.uuidString }) {
-            let key = Self.titleKey(candidate.title)
-            guard !key.isEmpty, byTitle[key] == nil else { continue }
-            byTitle[key] = candidate.id
-        }
-        return Self.edges(from: note, titles: byTitle)
+        return Self.edges(from: note, titles: Self.titleMap(of: all))
     }
 
     // MARK: - Extraction
