@@ -40,6 +40,16 @@ let package = Package(
             ],
             swiftSettings: [
                 .swiftLanguageMode(.v6),
+                // `SWIFT_TREAT_WARNINGS_AS_ERRORS` in project.yml does not
+                // reach a package target — verified by planting a warning in
+                // here and watching the Debug build go green. Since the whole
+                // app is this package, the setting was worth almost nothing
+                // until it was also said here.
+                //
+                // Debug only, for the reason project.yml gives: a new SDK may
+                // deprecate an API overnight, and that must block the merge,
+                // never the release archive.
+                .treatAllWarnings(as: .error, .when(configuration: .debug)),
             ]
         ),
     ]

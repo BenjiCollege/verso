@@ -27,6 +27,22 @@ packages:
     path: VersoKit
 
 settings:
+  configs:
+    # Warnings are errors while developing, and only warnings when shipping.
+    #
+    # A warning here has always meant real debt — deprecated Keychain calls on
+    # the vault's critical path, an actor-isolation violation that a later
+    # language mode turns into an error. Letting CI go green over them is how
+    # they accumulated. So Debug, which is what CI builds and tests, refuses
+    # them outright.
+    #
+    # Release deliberately does not. A new SDK can deprecate an API overnight,
+    # and a toolchain bump must never be able to block a release archive of
+    # code that was fine yesterday. It blocks the *merge* instead, which is
+    # where the fix belongs.
+    Debug:
+      SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+      GCC_TREAT_WARNINGS_AS_ERRORS: YES
   base:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
@@ -118,6 +134,17 @@ schemes:
       config: Debug
       # `@testable import VersoKit` needs the package built with testability,
       # which Debug does.
+      # This produces the profile data. It does not produce a usable *report*:
+      # `xccov` reports per Xcode target, a package product is not one, and so
+      # `xcrun xccov view --report` describes `VersoApp.swift` and
+      # `VersoWidgetBundle.swift` — fourteen lines out of twenty-three thousand
+      # — and calls that the coverage. Naming the package under
+      # `coverageTargets` does not help either: the scheme reference cannot
+      # match the mangled `VersoKit_<hash>_PackageProduct` name, and xccov then
+      # reports `VersoKit 0.00% (0/0)`, which is worse for being confident.
+      #
+      # The instrumentation is fine; only the reporting is. `scripts/coverage.sh`
+      # reads the same profile data with `llvm-cov` and prints the real number.
       gatherCoverageData: true
       targets:
         - VersoTests
