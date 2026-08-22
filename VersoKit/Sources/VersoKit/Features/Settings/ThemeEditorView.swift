@@ -48,8 +48,16 @@ struct ThemeEditorView: View {
                 Section {
                     HStack {
                         Text("Grain")
-                        Slider(value: $draft.grain, in: 0...1, step: 0.05)
-                            .tint(draft.accent)
+                        // The label is a sibling `Text`, which VoiceOver reads
+                        // as its own element and does not attach to the
+                        // control — so the slider announced itself as an
+                        // unnamed percentage. Said explicitly here instead.
+                        Slider(value: $draft.grain, in: 0...1, step: 0.05) {
+                            Text("Grain")
+                        }
+                        .tint(draft.accent)
+                        .accessibilityLabel(Text("Grain"))
+                        .accessibilityValue(Text("\(Int(draft.grain * 100)) percent"))
                     }
                 } footer: {
                     Text("Paper texture. Increase Contrast and Reduce Transparency flatten it to nothing whatever you set here.")
@@ -119,6 +127,11 @@ private struct ThemePreview: View {
         }
         .padding(Layout.Space.regular)
         .frame(maxWidth: .infinity, alignment: .leading)
+        // A specimen, not prose. Read verbatim it is a pangram and a line of
+        // filler, which tells a VoiceOver user nothing about the theme — so it
+        // is one element that says what it is for.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("Preview of this theme"))
         .background(theme.stock)
         .overlay(alignment: .leading) {
             // The fore-edge, which is the one token you cannot judge from a

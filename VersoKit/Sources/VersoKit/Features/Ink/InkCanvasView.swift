@@ -52,6 +52,7 @@ struct InkCanvasView: UIViewRepresentable {
         context.coordinator.tapRecogniser = tap
 
         context.coordinator.apply(drawing, to: canvas)
+        describe(canvas)
         return canvas
     }
 
@@ -61,6 +62,28 @@ struct InkCanvasView: UIViewRepresentable {
         context.coordinator.tapRecogniser?.isEnabled = onStrokeTapped != nil
         context.coordinator.apply(drawing, to: canvas)
         context.coordinator.applyTool(to: canvas, theme: theme)
+        describe(canvas)
+    }
+
+    /// `PKCanvasView` advertises nothing to VoiceOver, so an ink block was
+    /// simply absent from the page rather than being described as a drawing.
+    ///
+    /// It cannot say what was drawn — nothing can — but it can say that there
+    /// is a drawing, how much of one, and whether this is a surface that takes
+    /// a stroke or a finished one being read. `.allowsDirectInteraction` is
+    /// what lets a VoiceOver user actually draw: it hands touches to the canvas
+    /// instead of interpreting them as gestures.
+    private func describe(_ canvas: PKCanvasView) {
+        canvas.isAccessibilityElement = true
+        canvas.accessibilityTraits = isEditable ? [.allowsDirectInteraction] : [.image]
+
+        let strokes = canvas.drawing.strokes.count
+        canvas.accessibilityLabel = strokes == 0
+            ? String(localized: "Drawing, empty")
+            : String(localized: "Drawing, \(strokes) strokes")
+        canvas.accessibilityHint = isEditable
+            ? String(localized: "Draw with a finger or Apple Pencil.")
+            : nil
     }
 
     @MainActor
