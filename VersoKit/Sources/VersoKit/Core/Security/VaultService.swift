@@ -81,7 +81,15 @@ final class VaultService {
     func setUp(passphrase: String) async {
         await perform {
             let key = SymmetricKey(size: .bits256)
-            let wrapped = try WrappedVaultKey.wrap(key, passphrase: passphrase)
+
+            // Off the main actor, for the same reason `unlockWithPassphrase`
+            // does it: wrapping runs the same 310,000-iteration PBKDF2 that
+            // unwrapping does. This path was the one that ran it inline, so
+            // creating a vault froze the screen for the whole derivation while
+            // opening one did not.
+            let wrapped = try await Task.detached(priority: .userInitiated) {
+                try WrappedVaultKey.wrap(key, passphrase: passphrase)
+            }.value
 
             try VaultKeychain.storeWrapped(wrapped)
             do {
