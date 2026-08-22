@@ -43,22 +43,31 @@ Some of what that buys, concretely:
 
 ## Status
 
-CI is green. The project compiles against the iOS 26 SDK and **467 tests in 50
-suites pass** on the simulator, on every push.
+CI is green. The project compiles against the iOS 26 SDK with **no warnings**,
+and **515 tests in 57 suites pass** on the simulator, on every push.
 
-What that does *not* cover, and what nobody should assume from the green tick:
+Warnings are errors in Debug — the configuration CI builds and tests — in both
+`project.yml` and `Package.swift`. It has to be said in both: the project
+setting does not reach a package target, and the whole app is the package. It is
+deliberately *not* set for Release, so a new SDK deprecating an API can block a
+merge but never a release archive.
+
+What the green tick does *not* cover:
 
 - It has **never run on a physical device**. Haptics, biometrics, Pencil,
   geofencing and the on-device language model cannot be exercised in a simulator
   at all.
 - It has **never synced**. Two devices on one iCloud account is the only real
-  test of the CloudKit schema, and it hasn't happened.
-- There is **no app icon**. `AppIcon.appiconset` declares three 1024×1024 slots
-  and contains no images.
+  test of the CloudKit schema, and it hasn't happened. This is now a
+  *simulator* job rather than a hardware one — see below.
 
-It was written on Windows 11 with no Xcode, no Swift toolchain and no simulator,
-which is why the repo is arranged so a Mac is never required: `project.yml` is
-the source of truth, `.xcodeproj` is generated, and CI builds on a runner.
+The project was originally written on Windows 11 with no Xcode, no Swift
+toolchain and no simulator, which is why the repo is arranged so a Mac is never
+required: `project.yml` is the source of truth, `.xcodeproj` is generated, and
+CI builds on a runner. That arrangement is worth keeping. But the constraint it
+was written under has lifted, and much of what this file used to file under
+"impossible from here" is now merely undone — the [device
+table](#what-has-not-been-seen-working) marks which is which.
 
 [TESTFLIGHT.md](TESTFLIGHT.md) covers signing and distribution.
 [SUBMISSION.md](SUBMISSION.md) separates what is done in the repo from what
@@ -79,7 +88,7 @@ still needs you.
 | **PDFKit** + **CoreGraphics** + **ImageIO** | Document viewing, annotation, PDF export in two forms (flattened and layered), and the animated share card. |
 | **AVFoundation** + **Speech** | Audio notes, recorded as mono AAC, transcribed strictly on-device. |
 | **FoundationModels** | Titling, tagging, summarising, structuring. Every use has a heuristic fallback that runs when the model is unavailable — which is most of the install base. |
-| **NaturalLanguage** | Sentence embeddings for semantic search, with a lexical path for the many languages that have none. |
+| **NaturalLanguage** | Sentence embeddings for semantic search, in the device's own language, with a lexical path for the many languages that have none. Both halves run on `SearchIndexSource`, off the main actor. |
 | **CoreLocation** + **MapKit** | Place blocks and arrival reminders, via `CLMonitor` rather than the deprecated region API. |
 | **UserNotifications** | Schedules, timers and geofence reminders. Time-sensitive interruption levels, with the entitlement to match. |
 | **CryptoKit** + **CommonCrypto** + **Security** + **LocalAuthentication** | The vault: AES-GCM content encryption, PBKDF2 for the passphrase-derived key, two Keychain items because a biometry-bound one cannot sync. |
@@ -101,7 +110,7 @@ A thin Xcode project over a local Swift package.
 ```
 project.yml               the project, as source — .xcodeproj is generated
 .github/workflows/        build+test on every push; release on manual dispatch
-scripts/                  what was actually signed, verified
+scripts/                  what was actually signed, verified; and coverage
 VersoKit/                 the whole app, as a package
   Package.swift
   Sources/VersoKit/
@@ -116,7 +125,7 @@ Verso/                    the app target
   Resources/              asset catalogue, PrivacyInfo.xcprivacy
 VersoWidgets/             the extension target
   VersoWidgetBundle.swift @main, and nothing else
-VersoTests/               21 files, @testable import VersoKit
+VersoTests/               28 files, @testable import VersoKit
 Config/                   Info.plists and entitlements
 ```
 
@@ -133,7 +142,7 @@ that, rather than a project-file membership list. Moving the whole app into the
 package and leaving only `@main` behind is what made that possible without
 making a hundred types public.
 
-**The public surface is five types**, across 149 files: `VersoScene`,
+**The public surface is five types**, across 164 files: `VersoScene`,
 `RecentNotesWidget`, `QuickCaptureWidget`, `VersoCaptureControl`, and
 `VersoKitPackage`. Everything else is internal. What the app target can reach is
 a decision rather than an accident of what happened to be visible, and adding to
@@ -176,26 +185,56 @@ The bundle identifier is `com.verso.notes`, with `group.com.verso.notes` and
 `iCloud.com.verso.notes` alongside it. Changing it means changing all three,
 plus the keychain service — [TESTFLIGHT.md](TESTFLIGHT.md) §3.3 has the command.
 
+### Translating it
+
+There is no string catalogue in the repo, and that is not an omission: every
+user-facing string is already a `LocalizedStringResource` or a SwiftUI `Text`,
+`SWIFT_EMIT_LOC_STRINGS` is on, and the export works today.
+
+```bash
+xcodebuild -exportLocalizations -project Verso.xcodeproj -localizationPath loc -exportLanguage en
+```
+
+That produces an `.xcloc` holding **599 translatable strings** across the app,
+the package and the widget. A checked-in `Localizable.xcstrings` would be a
+place to *keep* translations, and is worth adding the day there are some; an
+empty one adds a file and nothing else.
+
 ---
 
-## What only a device can prove
+## What has not been seen working
 
 Everything below compiled and, where testable, passed. None of it has been seen
-working. Ordered by how quietly it fails.
+running. Ordered by how quietly it fails.
+
+This used to be one table headed "what only a device can prove", written when
+there was no Mac to hand. Most of it never needed a device — it needed a
+simulator, which there now is. Splitting the two is the difference between a
+list of things that are *blocked* and a list of things that are merely *not
+done yet*.
+
+**A simulator is enough.** Nothing here is waiting on hardware.
 
 | Area | What to check |
 |---|---|
-| **Keychain and biometrics** | `.biometryCurrentSet` must destroy the local key when enrolled biometrics change; the synchronizable item must reach a second device and the biometry-bound one must not. `kSecUseAuthenticationUIFail` must answer "does a key exist" *without* putting up Face ID on launch. |
-| **CloudKit sync** | Two simulators, one account. The schema is asserted; the round trip is not. Also confirm `.externalStorage` ships audio as an asset rather than stalling a save. |
+| **CloudKit sync** | Two simulators, one account. The schema is asserted; the round trip is not. Also confirm `.externalStorage` ships audio as an asset rather than stalling a save. The single biggest unverified thing in the project. |
 | **The app group** | App, widget and intents read one store through `group.com.verso.notes`. Getting it wrong means three processes quietly using three different databases — `scripts/verify-entitlements.sh` reads what `codesign` actually recorded, because this is the failure the App Store does not object to. |
-| **Haptics** | Five AHAP files, none of which can play in a simulator. A wrong intensity is not a compile error, and silence is indistinguishable from hardware that has no haptics. |
-| **On-device language model** | `SystemLanguageModel.default.availability` gates everything, and every path behind it has a fallback. Confirm the fallback is what runs when the model is absent — not an empty result. |
+| **Shortcuts registration** | Intents in a package compile but do **not** register unless the app and the extension each declare an `AppIntentsPackage`. Both do. Without it Shortcuts is simply empty and nothing explains why — so check it lists the five intents. |
 | **TextKit 2 fragment rendering** | `VersoTextView` declares no initialiser so `usingTextLayoutManager: true` is inherited. If a subclass initialiser ever creeps in, TextKit 1 takes over silently and the ruled lines simply never draw. |
 | **PDF geometry** | Page space is bottom-left origin and every annotation flips exactly once. Mirrored highlights mean the flip happened twice or not at all. Check a two-column PDF and one mixing page sizes. |
+| **Reveal at 60fps** | Per-glyph rendering attributes under a `TimelineView`, and whether it fights the layout manager. Instruments, on a 20,000-word note, against the 16ms budget. |
+| **VoiceOver, Dynamic Type, Reduce Motion** | §9's quality bar: every screen under VoiceOver, Dynamic Type through AX5 without clipping, and Reduce Motion + Increase Contrast + Reduce Transparency all on at once. |
+| **Cold launch** | Under 400ms. The link index is built lazily specifically to stay out of this; confirm it does. |
+
+**Hardware only.** A simulator cannot answer these at all.
+
+| Area | What to check |
+|---|---|
+| **Keychain and biometrics** | `.biometryCurrentSet` must destroy the local key when enrolled biometrics change; the synchronizable item must reach a second device and the biometry-bound one must not. `hasLocalKey()` must answer "does a key exist" *without* putting up Face ID on launch — it uses `LAContext.interactionNotAllowed` and treats `errSecInteractionNotAllowed` as a yes. |
+| **Haptics** | Five AHAP files, none of which can play in a simulator. A wrong intensity is not a compile error, and silence is indistinguishable from hardware that has no haptics. |
+| **On-device language model** | `SystemLanguageModel.default.availability` gates everything, and every path behind it has a fallback. Confirm the fallback is what runs when the model is absent — not an empty result. |
 | **Pencil** | `PKStroke.path.creationDate` drives ink replay; if it is not what it appears to be, replay is wrong rather than absent. Pencil Pro squeeze may fire the older tap callback. |
 | **Geofencing** | `CLMonitor`'s event stream and the ~20-region ceiling `GeofenceBudget.systemLimit` encodes. Always-authorisation must be requested only after When In Use is granted. |
-| **Shortcuts registration** | Intents in a package compile but do **not** register unless the app and the extension each declare an `AppIntentsPackage`. Both do. Without it Shortcuts is simply empty and nothing explains why — so check it lists the five intents. |
-| **Reveal at 60fps** | Per-glyph rendering attributes under a `TimelineView`, and whether it fights the layout manager. |
 
 ---
 
@@ -203,13 +242,16 @@ working. Ordered by how quietly it fails.
 
 Deliberate, not oversights:
 
-- **No app icon artwork.** `AppIcon.appiconset` is declared but empty.
+- **The app icon has no dark or tinted variant.** `AppIcon.appiconset` carries
+  one opaque 1024×1024 universal image. iOS 18 and later will letterbox that
+  into the dark and tinted slots rather than compose something better.
 - **Sync is untested.** §9 requires verification across two simulators on one
-  iCloud account. That needs a Mac.
+  iCloud account. Not blocked any more — just not done.
 - **The backlink index is in memory, not persisted.** Links live inside archived
   text, which SwiftData cannot form a predicate against. It builds on first use
   rather than at launch, so it costs nothing against the 400ms budget, and every
-  later edit patches it incrementally. If a library ever grows large enough for
+  later edit patches it incrementally — against a cached title map, so patching
+  one note does not re-read the library. If a library ever grows large enough for
   the first build to be felt, the fix is a persisted `NoteLink` model — a schema
   change, and therefore yours to approve.
 - **Headings and list items are still plain `TextField`s.** Only `text` blocks
@@ -219,7 +261,7 @@ Deliberate, not oversights:
   template changes hands as a file and no server is involved. Syncing them would
   mean a `UserTemplate` `@Model`, which is a schema change and therefore yours
   to approve.
-- **The exercise library holds ~170 entries, not ~200.** §7 asks for about two
+- **The exercise library holds 152 entries, not ~200.** §7 asks for about two
   hundred. Padding it with near-duplicates would make the picker worse, so the
   gap is left visible; adding more is one JSON file edit and no Swift.
 
@@ -309,7 +351,10 @@ All flagged rather than silently taken:
     under Foundation Models, but sentence embeddings come from `NLEmbedding`,
     which is on-device and available far more widely. Where embeddings do not
     exist for the user's language, lexical scoring carries the whole feature
-    rather than half of it.
+    rather than half of it — and the language is the device's, taken from
+    `Locale`, not a fixed `.english`. Fixing it at English is what would make
+    that fallback a fiction: a French library scored against English vectors
+    does not fall back, it matches badly.
 21. **The AI affordances are never hidden — only the model behind them
     changes.** §7 says to hide unavailable affordances entirely, and dictation
     obeys that literally: no on-device transcription, no microphone button.
@@ -369,7 +414,7 @@ All flagged rather than silently taken:
 
 ## Tests
 
-467 tests in 50 suites, Swift Testing throughout, run on every push by
+515 tests in 57 suites, Swift Testing throughout, run on every push by
 [ios.yml](.github/workflows/ios.yml). They are the only thing standing in for a
 device, so they lean towards asserting the constraints that fail silently — the
 CloudKit schema rules, the vault exclusions, the zero-Swift template guarantee —
@@ -415,6 +460,7 @@ rather than towards coverage for its own sake.
 | `NoteDigestTests` | A locked note digesting to nothing |
 | `SemanticIndexTests` | Literal matching, title outranking body, every query word having to appear, locked notes never surfacing |
 | `SyncMapTests` | Tapping a word resolving to when it was written, strokes appearing only once finished, both streams independent per block |
+| `InkTimelineTests` | A stroke's interval measured from the recording rather than itself, strokes drawn beforehand dropped rather than clamped, drawing-order indices surviving that drop, replay subsets, a tap past the tolerance finding nothing, and height growing then clamping |
 | `SyncMapRecorderTests` | Coalescing keeping the furthest offset reached, per-block independence, strokes replaced rather than appended |
 | `InkAudioPayloadTests` | Round-trips, height clamping, templates keeping shape and dropping content, AAC mono 32kbps |
 | `DocumentAnnotationTests` | Normalised rects surviving a resize, ink per page, clearing leaving nothing behind, highlighted text in reading order |
@@ -425,8 +471,39 @@ rather than towards coverage for its own sake.
 | `SpotlightSourceTests` | Excluded notes coming back as *deletions* rather than omissions |
 | `IntentTests` | Shortcuts seeing every template with no template named in Swift; locked notes opaque to intents |
 
-What they cannot reach is listed under [What only a device can
-prove](#what-only-a-device-can-prove). The gap worth naming twice: the vault's
-*cryptography* is tested and its *storage* is not — `VaultCipherTests` and
-`PassphraseKDFTests` exercise the round trips, but Keychain access control, the
-biometric prompt and iCloud Keychain sync need hardware.
+What they cannot reach is listed under [What has not been seen
+working](#what-has-not-been-seen-working). The gap worth naming twice: the
+vault's *cryptography* is tested and its *storage* is not — `VaultCipherTests`
+and `PassphraseKDFTests` exercise the round trips, but Keychain access control,
+the biometric prompt and iCloud Keychain sync need hardware.
+
+### Coverage
+
+**27.5% of VersoKit by line.** Run it yourself, after a test build:
+
+```bash
+scripts/coverage.sh
+```
+
+That number was invisible until there was a script to print it. The scheme has
+gathered coverage all along, but `xcrun xccov` reports per Xcode target and the
+whole app is a package — so the built-in report described `VersoApp.swift` and
+`VersoWidgetBundle.swift`, fourteen lines, and looked like an answer. The
+profile data was always complete; only the reporting was missing.
+
+It is reported, not enforced. The shape matters more than the total:
+
+| | |
+|---|---|
+| `Core/Models`, `Core/Motion`, `Core/Persistence`, `Core/Templates` | 83–92% |
+| `Core/Blocks`, `Core/Schedule`, `Core/Theming` | 66–72% |
+| `Core/Security`, `Core/Location`, `Core/Intelligence`, `Core/Search`, `Core/Export` | 44–61% |
+| `Core/Metrics`, `Core/Documents`, `Core/Audio`, `Core/Timers`, `Core/Haptics` | 5–37% |
+| `Features/*` | 0–19% |
+
+The engine is tested and the screens are not, which is the intended shape — a
+SwiftUI view has no seam a unit test can reach, and there are no UI tests. The
+number to be uncomfortable about is not the 27.5%; it is any file under `Core/`
+still in the bottom band, because that is logic with a seam and no test through
+it. `Core/Ink` was at 0% until `InkTimelineTests` was written, and it was pure,
+deterministic, user-visible logic the whole time.
