@@ -220,7 +220,12 @@ final class RestTimerService {
 
     func requestNotificationPermission() async {
         guard let notifications else { return }
-        _ = try? await notifications.requestAuthorization(options: [.alert, .sound, .timeSensitive])
+        // `.timeSensitive` is not requested here: it was deprecated in iOS 15
+        // in favour of the Time Sensitive Notifications entitlement, which the
+        // app declares and `ios-release.yml` verifies was actually signed in.
+        // Asking for it as an option on a build that holds the entitlement is
+        // redundant; asking for it on one that does not would not help.
+        _ = try? await notifications.requestAuthorization(options: [.alert, .sound])
     }
 
     // MARK: - Audio session

@@ -44,7 +44,12 @@ struct MotionResolver: Equatable, Sendable {
     }
 
     /// Convenience for the common `withAnimation` call.
+    ///
+    /// `@discardableResult` because the body is almost always a mutation and
+    /// only incidentally an expression — `rows.remove(at:)` returns the row it
+    /// removed, and animating a removal is not a request to be handed it.
     @MainActor
+    @discardableResult
     func run<Result>(_ token: MotionToken, _ body: () throws -> Result) rethrows -> Result {
         try withAnimation(animation(token), body)
     }

@@ -62,7 +62,12 @@ final class ScheduleService {
     }
 
     func requestAuthorization() async {
-        let granted = (try? await center.requestAuthorization(options: [.alert, .sound, .badge, .timeSensitive])) ?? false
+        // `.timeSensitive` is not requested here: it was deprecated in iOS 15
+        // in favour of the Time Sensitive Notifications entitlement, which the
+        // app declares and `ios-release.yml` verifies was actually signed in.
+        // Asking for it as an option on a build that holds the entitlement is
+        // redundant; asking for it on one that does not would not help.
+        let granted = (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
         isAuthorized = granted
     }
 

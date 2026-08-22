@@ -70,8 +70,10 @@ enum VaultKeychain {
             kSecAttrService as String: service,
             kSecAttrAccount as String: localAccount,
             kSecReturnData as String: true,
+            // The reason travels on the `LAContext` above. `kSecUseOperationPrompt`
+            // was the pre-iOS 14 way to say the same thing and is deprecated;
+            // passing both would just be two spellings of one string.
             kSecUseAuthenticationContext as String: context,
-            kSecUseOperationPrompt as String: reason,
         ]
 
         var item: CFTypeRef?
@@ -90,14 +92,23 @@ enum VaultKeychain {
         }
     }
 
+    /// Whether a key exists — *without* putting a Face ID prompt in front of
+    /// someone who has only opened the app.
+    ///
+    /// `LAContext.interactionNotAllowed` is the iOS 14 replacement for
+    /// `kSecUseAuthenticationUI: fail`, and means the same thing: a lookup that
+    /// would need the user answers `errSecInteractionNotAllowed` instead of
+    /// asking. That status is the *success* case here — it says the item is
+    /// there and guarded. Only `errSecItemNotFound` means no key.
     static func hasLocalKey() -> Bool {
-        // `kSecUseAuthenticationUI: fail` asks whether the item exists without
-        // putting a Face ID prompt in front of someone who only opened the app.
+        let context = LAContext()
+        context.interactionNotAllowed = true
+
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: localAccount,
-            kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail,
+            kSecUseAuthenticationContext as String: context,
         ]
         let status = SecItemCopyMatching(query as CFDictionary, nil)
         return status == errSecSuccess || status == errSecInteractionNotAllowed
