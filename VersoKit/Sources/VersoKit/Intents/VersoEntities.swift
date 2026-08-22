@@ -65,7 +65,8 @@ actor IntentDataSource {
             SemanticIndex.Entry(noteID: $0.id, title: $0.title, text: $0.summary, isLocked: false)
         }
         let hits = index.search(query, in: searchable, limit: limit)
-        return hits.compactMap { hit in entries.first { $0.id == hit.noteID } }
+        let byID = Dictionary(entries.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return hits.compactMap { byID[$0.noteID] }
     }
 
     func notes(ids: [UUID]) -> [NoteEntity.Snapshot] {

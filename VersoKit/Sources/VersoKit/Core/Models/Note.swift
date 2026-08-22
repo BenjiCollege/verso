@@ -1,4 +1,4 @@
-﻿import Foundation
+import Foundation
 import SwiftData
 
 /// The unit of authorship. A note is an ordered array of typed blocks and

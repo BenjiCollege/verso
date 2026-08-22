@@ -23,9 +23,12 @@ enum PassphraseKDF {
         var bytes = [UInt8](repeating: 0, count: saltLength)
         // A predictable salt would let one rainbow table cover every Verso user.
         guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess else {
-            // Falling back to a weaker source silently would be worse than
-            // refusing; the caller surfaces this.
-            return Data(SymmetricKey(size: .bits256).withUnsafeBytes { Data($0) })
+            // The fallback is not a weaker source and nothing is surfaced —
+            // which is what the comment here used to claim on both counts.
+            // `SymmetricKey(size:)` draws from the same system CSPRNG, so this
+            // is a second door to the same generator rather than a downgrade,
+            // and there is no failure for a caller to report.
+            return SymmetricKey(size: .bits256).withUnsafeBytes { Data($0) }
         }
         return Data(bytes)
     }

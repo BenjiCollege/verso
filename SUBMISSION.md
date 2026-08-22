@@ -22,8 +22,8 @@ sentences describing the benefit. Generic strings are an automatic rejection.
 | `NSFaceIDUsageDescription` | **Done** — unlocking the vault |
 | `NSLocationWhenInUseUsageDescription` | **Done** — finding nearby matches for place reminders |
 | `NSLocationAlwaysAndWhenInUseUsageDescription` | **Done** — place reminders while the app is closed |
-| `NSPhotoLibraryUsageDescription` | **Not needed** — the `image` block type is declared but unimplemented, and nothing reaches the photo library. Add this string if that changes. |
-| `NSCameraUsageDescription` | **Not needed** — same reason. |
+| `NSPhotoLibraryUsageDescription` | **Not needed** — the `image` block is implemented, but it picks through SwiftUI's `PhotosPicker`, which runs out of process and hands back only the chosen image. The app never gets library access, so the string would describe a permission it does not request. Add it only if the block ever moves to `PHPhotoLibrary` directly. |
+| `NSCameraUsageDescription` | **Not needed** — nothing reaches the camera. |
 | `NSCalendarsUsageDescription` | **Not needed** — schedules use `UNUserNotificationCenter`, not EventKit. |
 
 ## PrivacyInfo.xcprivacy
@@ -67,7 +67,8 @@ report.
 
 | Item | Status |
 |---|---|
-| App icon, every size | **Needs you** — [AppIcon.appiconset](Verso/Resources/Assets.xcassets/AppIcon.appiconset) declares the 1024pt universal slot plus dark and tinted variants, and is empty. No artwork can be produced from here. |
+| App icon, universal | **Done** — [AppIcon.appiconset](Verso/Resources/Assets.xcassets/AppIcon.appiconset) carries one opaque 1024×1024 PNG in the universal slot, which is what App Store Connect requires. |
+| App icon, dark and tinted | **Needs you** — neither variant is declared. iOS 18 and later will derive both from the universal image rather than compose something made for the purpose. Not a submission blocker. |
 | Launch screen | **Done** — `UILaunchScreen` with the `LaunchBackground` colour set, which follows light and dark. |
 | Screenshots | **Needs a Mac** — §10 warns the required sizes change; check App Store Connect rather than assuming. Take them on `iron-gall` and `midnight-oil` so the theming shows. |
 | Privacy policy URL | **Needs you** — required even collecting nothing. |
@@ -124,9 +125,9 @@ Also worth testing, from §9's quality bar:
 
 Not blockers, but worth deciding on before submitting rather than after.
 
-- **Four block types are declared but unimplemented:** `callout`, `code`,
-  `image`, `link`. They decode and render an explicit placeholder rather than
-  vanishing, and no bundled template uses them.
+- **Three block types are declared but unimplemented:** `callout`, `code` and
+  `link`. They decode and render an explicit placeholder rather than vanishing,
+  and no bundled template uses them. `image` was the fourth and now works.
 - **Documents do not sync.** See the README's deviation list.
 - **User templates do not sync.** Same.
-- **The exercise library holds ~170 entries**, not the ~200 §7 asks for.
+- **The exercise library holds 152 entries**, not the ~200 §7 asks for.

@@ -11,7 +11,11 @@ import UIKit
 struct NoteEditorView: View {
     @Bindable var note: Note
 
-    static let pageCoordinateSpace = "verso.page"
+    /// `nonisolated` because conforming to `View` infers `@MainActor` on the
+    /// whole type, and `TextBlockView` reads this from inside the `@Sendable`
+    /// transform of `onGeometryChange`. A name for a coordinate space is a
+    /// constant string; it has no business being actor-isolated at all.
+    nonisolated static let pageCoordinateSpace = "verso.page"
 
     @Environment(\.modelContext) private var context
     @Environment(\.themeCatalog) private var catalog
@@ -48,7 +52,20 @@ struct NoteEditorView: View {
     @State private var scrubbedSnapshot: NoteSnapshot?
 
     private var versionStore: VersionStore { VersionStore(context: context) }
-    private var versions: [Version] { versionStore.versions(of: note) }
+
+    /// Cached rather than computed.
+    ///
+    /// `body` reads this three times — the fore-edge, the page and the scrub
+    /// bar — and computing it sorts the whole history, which the retention
+    /// policy caps at 120. Sorting 120 objects three times per render, on
+    /// every keystroke, to answer "how many are there" is work nobody asked
+    /// for. History only changes when something records or restores, so it is
+    /// refreshed there and when the relationship's count moves under us.
+    @State private var versions: [Version] = []
+
+    private func refreshVersions() {
+        versions = versionStore.versions(of: note)
+    }
 
     private var theme: Theme { catalog.theme(id: note.themeID) ?? appTheme }
     private var stock: Stock { catalog.stock(id: note.stockID) ?? appStock }
@@ -156,11 +173,15 @@ struct NoteEditorView: View {
             appendDroppedText(items.joined(separator: "\n\n"))
             return true
         }
+        .onChange(of: note.versions?.count) { _, _ in
+            refreshVersions()
+        }
         .task {
             haptics.prepare()
             // The first version is the note as it was when opened, so there is
             // always something to scrub back to.
             versionStore.record(note)
+            refreshVersions()
         }
         .onDisappear {
             versionStore.record(note)
@@ -219,6 +240,10 @@ struct NoteEditorView: View {
             scrubIndex = nil
             scrubbedSnapshot = nil
         }
+        // Restoring records the present first, so history grew — and pruning at
+        // the retention limit can leave the count unchanged, which is why this
+        // does not rely on `onChange` noticing.
+        refreshVersions()
         haptics.play(.vaultClasp)
     }
 

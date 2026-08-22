@@ -33,10 +33,23 @@ struct SemanticIndex {
         var isLocked: Bool
     }
 
+    /// The language to score in.
+    ///
+    /// Derived from the device rather than fixed at English, because fixing it
+    /// is what turns the lexical fallback into a lie: a French library scored
+    /// against English vectors does not fall back, it matches badly. Where the
+    /// device's language has no sentence embedding, `embedding` is `nil` and
+    /// the lexical path carries the whole feature — which is the intended
+    /// behaviour, and could never be reached while this said `.english`.
+    static var preferredLanguage: NLLanguage {
+        guard let code = Locale.current.language.languageCode?.identifier else { return .english }
+        return NLLanguage(rawValue: code)
+    }
+
     /// `nil` when the device has no sentence embedding for this language.
     private let embedding: NLEmbedding?
 
-    init(language: NLLanguage = .english) {
+    init(language: NLLanguage = SemanticIndex.preferredLanguage) {
         self.embedding = NLEmbedding.sentenceEmbedding(for: language)
     }
 
@@ -146,9 +159,29 @@ struct SemanticIndex {
     }
 }
 
-/// Builds the searchable text off the main actor.
+/// Runs a search off the main actor.
+///
+/// Both halves of a search are expensive and neither belongs on the thread that
+/// has to draw the result: building the entries decodes every block of every
+/// note, and scoring them loads a sentence-embedding model and walks up to 24
+/// sentences per note. `@ModelActor` gives this its own `ModelContext` so the
+/// first half is safe off the main actor, and keeping `SemanticIndex` as actor
+/// state means the model is loaded once per session rather than once per
+/// keystroke. Only `SearchHit` — which is `Sendable` — crosses back.
 @ModelActor
 actor SearchIndexSource {
+
+    /// Held rather than rebuilt because the initialiser loads an `NLEmbedding`.
+    /// Not `Sendable`, which is exactly why it lives inside an actor.
+    private var index: SemanticIndex?
+
+    /// Entries, scored, in one hop across the isolation boundary.
+    func search(_ query: String, limit: Int = 40) -> [SearchHit] {
+        let index = index ?? SemanticIndex()
+        self.index = index
+        return index.search(query, in: entries(), limit: limit)
+    }
+
     func entries() -> [SemanticIndex.Entry] {
         let descriptor = FetchDescriptor<Note>(
             predicate: #Predicate<Note> { !$0.isTrashed && !$0.isHidden }

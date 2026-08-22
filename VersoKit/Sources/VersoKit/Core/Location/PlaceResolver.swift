@@ -46,7 +46,7 @@ enum PlaceResolver {
             let response = try await MKLocalSearch(request: request).start()
             return response.mapItems
                 .compactMap { item in
-                    let coordinate = Coordinate(item.placemark.coordinate)
+                    let coordinate = Coordinate(item.location.coordinate)
                     guard coordinate.isValid else { return nil }
                     return ResolvedPlace(name: item.name ?? category, coordinate: coordinate)
                 }

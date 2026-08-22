@@ -1,0 +1,17 @@
+# Line endings are normalised on the way in, so a checkout on Windows and a
+# checkout on a Mac produce the same bytes.
+#
+# This repo was written on Windows and carries the evidence: eighteen source
+# files arrived with CRLF terminators and one with a UTF-8 BOM. Swift compiles
+# all of it happily, which is why it went unnoticed — the cost is diff noise,
+# `grep` patterns that miss, and a heredoc in a shell script that behaves
+# differently depending on who last touched it.
+* text=auto eol=lf
+
+# Binary, and must never be line-ending converted.
+*.png binary
+*.pdf binary
+
+# JSON by extension, and worth saying so — themes, stocks, templates and the
+# haptic patterns are all hand-edited.
+*.ahap text eol=lf diff=json

@@ -53,7 +53,7 @@ final class RecordingSession {
             // `.default` rather than `.measurement`: this is somebody talking
             // over their own note, not a measurement, and the processing makes
             // a phone in a pocket sound less like a wind tunnel.
-            try session.setCategory(.playAndRecord, mode: .default, options: [.allowBluetooth, .defaultToSpeaker])
+            try session.setCategory(.playAndRecord, mode: .default, options: [.allowBluetoothHFP, .defaultToSpeaker])
             try session.setActive(true)
 
             let url = URL.temporaryDirectory

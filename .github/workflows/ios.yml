@@ -108,6 +108,23 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee build.log | xcbeautify --renderer github-actions
 
+      - name: Coverage
+        # Reported rather than enforced: there is no threshold to fail against
+        # yet, and a number nobody can see is a number nobody improves. Not
+        # `xccov` — see the comment in project.yml for why it cannot answer
+        # this question for a package.
+        run: |
+          set -euo pipefail
+          chmod +x scripts/*.sh
+          scripts/coverage.sh | tee coverage.txt
+          {
+            echo "### Coverage"
+            echo
+            echo '```'
+            cat coverage.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Diagnostics
         if: failure()
         run: |
