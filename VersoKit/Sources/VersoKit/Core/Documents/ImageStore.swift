@@ -82,9 +82,40 @@ enum ImageStore {
         return (note.images ?? []).first { $0.id == assetID }
     }
 
+    /// Decoded images, kept between renders.
+    ///
+    /// `load` is called from `body`, which runs on every render — and without
+    /// this, every render of a page holding a picture faulted the bytes in from
+    /// external storage and decoded a 2048px JPEG on the main thread. Scrolling
+    /// a note with three pictures in it did that three times a frame.
+    ///
+    /// Keyed by asset id, which is safe because an id is never reused: replacing
+    /// a picture inserts a new `ImageAsset` and deletes the old one, so a stale
+    /// entry can only belong to an asset nothing points at any more. `NSCache`
+    /// evicts under memory pressure by itself, and is thread-safe, which is why
+    /// this can be a `let` reachable from anywhere.
+    nonisolated(unsafe) private static let decoded = NSCache<NSUUID, UIImage>()
+
     static func load(_ assetID: UUID?, in note: Note?) -> UIImage? {
-        guard let asset = asset(assetID, in: note), !asset.data.isEmpty else { return nil }
-        return UIImage(data: asset.data)
+        guard let asset = asset(assetID, in: note) else { return nil }
+
+        let key = asset.id as NSUUID
+        if let hit = decoded.object(forKey: key) { return hit }
+
+        guard !asset.data.isEmpty, let image = UIImage(data: asset.data) else { return nil }
+        // Cost in bytes, so the cache's own limit means something. `NSCache`
+        // treats the units as opaque, but a consistent one lets the system
+        // evict the big pictures first.
+        decoded.setObject(image, forKey: key, cost: asset.data.count)
+        return image
+    }
+
+    /// Forgets a decoded image. Called when the asset behind it goes away, so a
+    /// deleted picture cannot be served from the cache to a block that is
+    /// undone back into existence pointing somewhere else.
+    static func forget(_ assetID: UUID?) {
+        guard let assetID else { return }
+        decoded.removeObject(forKey: assetID as NSUUID)
     }
 
     // MARK: - Removing
@@ -98,6 +129,7 @@ enum ImageStore {
     static func delete(_ assetID: UUID?, in note: Note?, context: ModelContext) {
         guard let asset = asset(assetID, in: note), let note else { return }
         note.images = (note.images ?? []).filter { $0.id != asset.id }
+        forget(asset.id)
         context.delete(asset)
     }
 
