@@ -70,6 +70,7 @@ targets:
       - package: VersoKit
       # XcodeGen adds the embed-extension copy phase from this.
       - target: VersoWidgets
+      - target: VersoShare
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.verso.notes
@@ -105,6 +106,25 @@ targets:
         SKIP_INSTALL: YES
         SWIFT_EMIT_LOC_STRINGS: YES
 
+  VersoShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: VersoShare
+    dependencies:
+      - package: VersoKit
+    settings:
+      base:
+        # Must be prefixed by the app's, or the extension will not install.
+        PRODUCT_BUNDLE_IDENTIFIER: com.verso.notes.share
+        PRODUCT_NAME: VersoShare
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Config/VersoShare-Info.plist
+        CODE_SIGN_ENTITLEMENTS: Config/VersoShare.entitlements
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SKIP_INSTALL: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+
   VersoTests:
     type: bundle.unit-test
     platform: iOS
@@ -127,6 +147,7 @@ schemes:
       targets:
         Verso: all
         VersoWidgets: all
+        VersoShare: all
       parallelizeBuild: true
     run:
       config: Debug

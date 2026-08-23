@@ -166,6 +166,11 @@ jobs:
           scripts/verify-entitlements.sh "$APP/PlugIns/VersoWidgets.appex" \
             com.apple.security.application-groups \
             com.apple.developer.icloud-container-identifiers
+          # The share extension fails the same way and even more quietly: it
+          # would still appear in the share sheet and still say it saved.
+          scripts/verify-entitlements.sh "$APP/PlugIns/VersoShare.appex" \
+            com.apple.security.application-groups \
+            com.apple.developer.icloud-container-identifiers
 
       - name: Build ExportOptions
         env:
