@@ -93,7 +93,12 @@ struct SectionLabel: View {
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: Layout.Space.regular)
             if let detail {
+                // One line, always. A detail is a count or a short name, and
+                // letting it wrap turns a two-word theme name into two lines
+                // that collide with the title beside it at large text sizes.
                 Text(detail)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
         }
         .versoText(.metadata)
