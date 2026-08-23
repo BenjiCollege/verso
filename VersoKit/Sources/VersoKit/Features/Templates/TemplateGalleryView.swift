@@ -13,6 +13,10 @@ struct TemplateGalleryView: View {
     @Environment(\.theme) private var theme
     @Environment(UserTemplateStore.self) private var userStore
 
+    /// The user template awaiting a delete confirmation.
+
+    @State private var deleting: Template?
+
     @State private var query = ""
     @State private var isImporting = false
     @State private var renamingTemplate: Template?
@@ -27,9 +31,13 @@ struct TemplateGalleryView: View {
                     Section {
                         ForEach(userSection) { template in
                             row(template)
-                                .swipeActions(edge: .trailing) {
+                                // Not full-swipe, and confirmed: a user template
+                                // is a file the user authored, it does not sync,
+                                // and `UserTemplateStore.delete` is an outright
+                                // `removeItem`. There is no second copy.
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                     Button(role: .destructive) {
-                                        userStore.delete(id: template.id)
+                                        deleting = template
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
@@ -71,6 +79,20 @@ struct TemplateGalleryView: View {
             .contentMargins(.horizontal, Layout.Space.regular, for: .scrollContent)
             .background(theme.canvas.ignoresSafeArea())
             .searchable(text: $query, prompt: Text("Search templates"))
+            .confirmationDialog(
+                "Delete this template?",
+                isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+                titleVisibility: .visible,
+                presenting: deleting
+            ) { template in
+                Button("Delete Template", role: .destructive) {
+                    userStore.delete(id: template.id)
+                    deleting = nil
+                }
+                Button("Cancel", role: .cancel) { deleting = nil }
+            } message: { template in
+                Text("“\(template.name)” is a file on this device and does not sync. Deleting it cannot be undone.")
+            }
             .navigationTitle("New Note")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -171,7 +193,7 @@ struct TemplateGalleryView: View {
         }
 
         Button(role: .destructive) {
-            userStore.delete(id: template.id)
+            deleting = template
         } label: {
             Label("Delete", systemImage: "trash")
         }

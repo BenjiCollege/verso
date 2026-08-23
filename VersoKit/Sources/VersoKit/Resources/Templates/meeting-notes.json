@@ -5,7 +5,7 @@
   "summary": "Attendees, decisions, and actions with owners.",
   "systemImage": "person.3",
   "category": "work",
-  "titleFormat": "Meeting — {date}",
+  "titleFormat": "Meeting — {date}, {time}",
   "blocks": [
     { "type": "heading", "payload": { "level": 1, "text": "Meeting" } },
     { "type": "list", "payload": { "style": "bullet", "items": [{ "text": "" }] } },

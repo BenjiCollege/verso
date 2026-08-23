@@ -393,9 +393,27 @@ struct LibraryView: View {
         path.append(copy)
     }
 
+    /// Makes the note **and opens it**.
+    ///
+    /// The note was already being created correctly and then thrown away —
+    /// `makeNote` is `@discardableResult` and the result was discarded, so
+    /// picking a template dropped you back on the library to go and find the
+    /// thing you had just asked for. On first launch, where the gallery opens
+    /// unprompted, that meant the app's opening move was to hand you a list.
+    ///
+    /// Picking a template is a statement of intent to write. `duplicate(_:)`
+    /// twenty lines above already gets this right, for the same reason.
+    ///
+    /// The date needs no special handling: `makeNote(date:)` defaults to `Date()`
+    /// at the moment of the call, `Note.init` stamps `createdAt` and
+    /// `modifiedAt` from it, and `{date}`/`{time}`/`{weekday}` in a template's
+    /// `titleFormat` resolve against the same value — so the note, its title and
+    /// its position in the recency sort all agree on now.
     private func createNote(from template: Template) {
         do {
-            try TemplateInstantiator.makeNote(from: template, in: context)
+            let note = try TemplateInstantiator.makeNote(from: template, in: context)
+            haptics.play(.checklistCheck)
+            path.append(note)
         } catch {
             failure = error.localizedDescription
         }

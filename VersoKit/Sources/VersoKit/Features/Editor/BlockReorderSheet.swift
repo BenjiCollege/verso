@@ -10,6 +10,15 @@ import SwiftUI
 struct BlockReorderSheet: View {
     @Bindable var note: Note
 
+    /// The editor's own actions, passed in rather than made here.
+    ///
+    /// Deleting a block on the page records a snapshot and offers Undo for
+    /// eight seconds; deleting the same block from this sheet used to be an
+    /// outright `context.delete`. Same operation, same note, two different
+    /// consequences depending on which screen you were looking at. Sharing the
+    /// instance is what makes the banner appear when the sheet closes.
+    let actions: BlockActions
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Environment(\.theme) private var theme
@@ -25,12 +34,13 @@ struct BlockReorderSheet: View {
                     note.touch()
                 }
                 .onDelete { offsets in
+                    // Only the most recent deletion is recoverable, which is all
+                    // a `List` row delete can produce — the minus and the swipe
+                    // both act on one row at a time.
                     let doomed = offsets.map { note.orderedBlocks[$0] }
                     for block in doomed {
-                        note.remove(block)
-                        context.delete(block)
+                        actions.delete(block, in: note, context: context)
                     }
-                    note.touch()
                 }
             }
             .listStyle(.plain)

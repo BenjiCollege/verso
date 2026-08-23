@@ -8,6 +8,10 @@ struct AudioBlockView: View {
     @Environment(\.modelContext) private var context
     @Environment(ReplaySession.self) private var replay
 
+    /// A recording is bytes with no second copy — deleting one is confirmed.
+
+    @State private var isConfirmingDelete = false
+
     @State private var failure: String?
 
     var body: some View {
@@ -49,6 +53,20 @@ struct AudioBlockView: View {
                 if let asset, replay.isPlaying(asset) {
                     progressBar
                 }
+            }
+            .confirmationDialog(
+                "Delete this recording?",
+                isPresented: $isConfirmingDelete,
+                titleVisibility: .visible
+            ) {
+                Button("Delete Recording", role: .destructive) {
+                    guard let asset else { return }
+                    AudioStore.delete(asset)
+                    context.delete(asset)
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("The audio cannot be recovered. The block stays, and can hold a new recording.")
             }
             .alert(
                 "Couldn't change that",
@@ -122,8 +140,7 @@ struct AudioBlockView: View {
             }
 
             Button(role: .destructive) {
-                AudioStore.delete(asset)
-                context.delete(asset)
+                isConfirmingDelete = true
             } label: {
                 Label("Delete Recording", systemImage: "trash")
             }
