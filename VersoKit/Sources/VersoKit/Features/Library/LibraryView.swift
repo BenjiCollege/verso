@@ -11,6 +11,21 @@ struct LibraryView: View {
 
     @State private var path = NavigationPath()
 
+    /// Which layout to draw.
+    ///
+    /// The app has shipped `TARGETED_DEVICE_FAMILY: "1,2"` from the start with
+    /// no size-class awareness anywhere, so an iPad got the phone's screen
+    /// stretched: one column, folders hidden behind a horizontal swipe, and a
+    /// note pushed over the list it came from. For an app whose whole metaphor
+    /// is a page, that is the device it should be best on.
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    /// The note in the detail column. Only the wide layout uses it — the
+    /// compact one pushes onto `path`, which is a different model and has to
+    /// stay that way: a `NavigationSplitView` selection and a `NavigationStack`
+    /// path disagree about what "back" means.
+    @State private var selectedNote: Note?
+
     /// Sorted by recency only: `Bool` isn't `Comparable`, so pinning can't be a
     /// `SortDescriptor`. Pinned notes are lifted into their own section below.
     @Query(
@@ -57,20 +72,155 @@ struct LibraryView: View {
     @State private var organising: Note?
 
     var body: some View {
+        Group {
+            if sizeClass == .regular {
+                splitLayout
+            } else {
+                stackLayout
+            }
+        }
+        // Everything below is layout-independent: sheets, alerts and the
+        // buffered requests from widgets, Spotlight and Handoff. Attached once
+        // to the `Group` so the two layouts cannot drift apart on any of it.
+        .sheet(isPresented: $isChoosingTemplate) {
+            TemplateGalleryView(onSelect: createNote)
+        }
+        .sheet(isPresented: $isCapturing) {
+            CaptureSheet { note in
+                haptics.play(.checklistCheck)
+                open(note)
+            }
+        }
+        .sheet(isPresented: $isShowingSettings) {
+            SettingsView()
+        }
+        .sheet(item: $organising) { note in
+            NoteOrganiseSheet(note: note)
+        }
+        .sheet(isPresented: $isShowingTrash) {
+            TrashView()
+        }
+        .alert(
+            "Couldn't create the note",
+            isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } }),
+            presenting: failure
+        ) { _ in
+            Button("OK", role: .cancel) { failure = nil }
+        } message: { message in
+            Text(message)
+        }
+        .onChange(of: navigation.pending, initial: true) { _, _ in
+            openPendingNote()
+        }
+        .onChange(of: notes.count) { _, _ in
+            openPendingNote()
+        }
+        .onChange(of: navigation.pendingCapture, initial: true) { _, requested in
+            guard requested != nil else { return }
+            isCapturing = true
+            navigation.clearCapture()
+        }
+        .onChange(of: navigation.arrivedTemplate, initial: true) { _, arrival in
+            guard arrival != nil else { return }
+            isChoosingTemplate = true
+            navigation.clearTemplateArrival()
+        }
+        .task {
+            guard !appearance.hasSeenGallery else { return }
+            guard navigation.pendingCapture == nil, navigation.pending == nil else { return }
+            appearance.hasSeenGallery = true
+            guard notes.isEmpty else { return }
+            isChoosingTemplate = true
+        }
+    }
+
+    // MARK: - Wide
+
+    /// Sidebar, list, page.
+    private var splitLayout: some View {
+        NavigationSplitView {
+            LibrarySidebar(
+                filter: $filter,
+                unfiledCount: unfiledCount,
+                onSettings: { isShowingSettings = true },
+                onTrash: { isShowingTrash = true }
+            )
+        } content: {
+            listColumn
+                // The canvas, same as the compact layout. Without it the column
+                // renders on the system's default list background — white next
+                // to a themed sidebar and a themed page, which is the one place
+                // in the app where two surfaces disagree.
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(theme.canvas.ignoresSafeArea())
+                .navigationTitle(filterTitle)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { newNoteButton }
+                .searchable(text: $query, prompt: Text("Search notes"))
+                .task(id: query) { await runSearch() }
+        } detail: {
+            if let selectedNote {
+                NoteEditorView(note: selectedNote)
+                    // Rebuilds the editor when the selection changes. Without
+                    // it SwiftUI reuses the view and the previous note's
+                    // scroll offset, fore-edge and editing session survive into
+                    // the next one.
+                    .id(selectedNote.id)
+            } else {
+                noNoteSelected
+            }
+        }
+    }
+
+    /// The detail column with nothing in it. A blank half-screen reads as a
+    /// bug; this reads as a choice.
+    private var noNoteSelected: some View {
+        VStack(spacing: Layout.Space.regular) {
+            Image(systemName: "book.closed")
+                .font(.system(size: Layout.Space.airy, weight: .light))
+                .foregroundStyle(theme.inkTertiary)
+            Text("Choose a page")
+                .versoText(.title)
+                .foregroundStyle(theme.inkSecondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(theme.canvas.ignoresSafeArea())
+    }
+
+    private var filterTitle: String {
+        switch filter {
+        case .all: String(localized: "All Notes")
+        case .unfiled: String(localized: "Unfiled")
+        case .folder, .tag: String(localized: "Notes")
+        }
+    }
+
+    /// Shared by both layouts — the list itself never differed, only what is
+    /// around it.
+    @ViewBuilder
+    private var listColumn: some View {
+        if !query.isEmpty {
+            searchResults
+        } else if notes.isEmpty {
+            emptyState
+        } else if visibleNotes.isEmpty {
+            filteredEmptyState
+        } else {
+            noteList
+        }
+    }
+
+    // MARK: - Compact
+
+    private var stackLayout: some View {
         NavigationStack(path: $path) {
             Group {
-                if !query.isEmpty {
-                    searchResults
-                } else if notes.isEmpty {
-                    emptyState
+                if !query.isEmpty || notes.isEmpty {
+                    listColumn
                 } else {
                     VStack(spacing: 0) {
                         LibraryFilterBar(filter: $filter, unfiledCount: unfiledCount)
-                        if visibleNotes.isEmpty {
-                            filteredEmptyState
-                        } else {
-                            noteList
-                        }
+                        listColumn
                     }
                 }
             }
@@ -88,92 +238,6 @@ struct LibraryView: View {
             .searchable(text: $query, prompt: Text("Search notes"))
             .task(id: query) {
                 await runSearch()
-            }
-            // An intent, a widget tap, a Spotlight result or a Handoff can all
-            // arrive before this view exists, so they are buffered and acted on
-            // here rather than pushed from outside.
-            // `initial: true` because the buffering above is otherwise wasted:
-            // a widget tap or a Spotlight result on a *cold* launch sets the
-            // request while this view is still being built, and `onChange`
-            // alone does not fire for a value that was already there.
-            .onChange(of: navigation.pending, initial: true) { _, _ in
-                openPendingNote()
-            }
-            // And again when the query delivers. On a cold launch the request
-            // is already set before the first render, so `initial: true` above
-            // runs against an empty `notes` and finds nothing. The request is
-            // deliberately left pending in that case rather than cleared, so
-            // this second look is what actually opens it.
-            .onChange(of: notes.count) { _, _ in
-                openPendingNote()
-            }
-            // First launch opens on the gallery rather than on an empty list and
-            // a plus, which describes nothing. Gated on the library actually
-            // being empty as well as on the flag, so restoring from a backup —
-            // where the notes arrive a moment after the view does — does not
-            // greet someone with a gallery they have no use for.
-            .task {
-                guard !appearance.hasSeenGallery else { return }
-
-                // Stand down if the app was launched to do something specific.
-                // A cold launch from the Quick Capture widget arrives with a
-                // request already waiting, and the unprompted gallery would
-                // open over it — the widget promises a note in one tap and the
-                // user would get a template list instead. The flag is left
-                // unset on purpose, so the gallery still gets its one showing
-                // on the next ordinary launch rather than being spent here.
-                guard navigation.pendingCapture == nil, navigation.pending == nil else { return }
-
-                appearance.hasSeenGallery = true
-                guard notes.isEmpty else { return }
-                isChoosingTemplate = true
-            }
-            // Opening a template file launches the app, so this is always the
-            // cold-launch case. The gallery is the confirmation: the import has
-            // already happened, and it is sitting there under the user's own.
-            // The Quick Capture widget and the Control Centre control both
-            // arrive as `verso://capture`, which launches the app — so like a
-            // widget tap on a note, the request is already waiting before this
-            // view exists. `initial: true` is what catches that cold launch.
-            .onChange(of: navigation.pendingCapture, initial: true) { _, requested in
-                guard requested != nil else { return }
-                isCapturing = true
-                navigation.clearCapture()
-            }
-            .onChange(of: navigation.arrivedTemplate, initial: true) { _, arrival in
-                guard arrival != nil else { return }
-                isChoosingTemplate = true
-                navigation.clearTemplateArrival()
-            }
-            .sheet(isPresented: $isChoosingTemplate) {
-                TemplateGalleryView(onSelect: createNote)
-            }
-            .sheet(isPresented: $isCapturing) {
-                // The sheet hands back the note it made; this used to be
-                // `{ _ in }`. Capturing something and being returned to the
-                // list is the same miss as picking a template was.
-                CaptureSheet { note in
-                    haptics.play(.checklistCheck)
-                    path.append(note)
-                }
-            }
-            .sheet(isPresented: $isShowingSettings) {
-                SettingsView()
-            }
-            .sheet(item: $organising) { note in
-                NoteOrganiseSheet(note: note)
-            }
-            .sheet(isPresented: $isShowingTrash) {
-                TrashView()
-            }
-            .alert(
-                "Couldn't create the note",
-                isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } }),
-                presenting: failure
-            ) { _ in
-                Button("OK", role: .cancel) { failure = nil }
-            } message: { message in
-                Text(message)
             }
         }
     }
@@ -213,10 +277,37 @@ struct LibraryView: View {
     }
 
     private func row(_ note: Note) -> some View {
-        NavigationLink(value: note) {
-            NoteRowView(note: note)
+        // A `Button`, not a `NavigationLink`.
+        //
+        // `NavigationLink(value:)` drives a `NavigationStack`'s path, which is
+        // the wrong thing entirely in the wide layout: it would push the note
+        // *inside* the list column rather than showing it in the detail one.
+        // Routing through `open(_:)` means one row definition behaves correctly
+        // in both, and the selected note is highlighted rather than lost.
+        Button {
+            open(note)
+        } label: {
+            HStack(spacing: Layout.Space.snug) {
+                NoteRowView(note: note)
+                // The chevron came free with `NavigationLink` and has to be
+                // drawn now — but only where tapping actually goes somewhere
+                // else. In the wide layout the note appears beside the list,
+                // so an arrow pointing off the edge of the column would be
+                // describing navigation that does not happen.
+                if sizeClass != .regular {
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(theme.inkTertiary)
+                }
+            }
+            .contentShape(.rect)
         }
-        .listRowBackground(Color.clear)
+        .buttonStyle(.plain)
+        .listRowBackground(
+            selectedNote?.id == note.id && sizeClass == .regular
+                ? theme.accent.opacity(0.12)
+                : Color.clear
+        )
         .listRowSeparator(.hidden)
         .listRowInsets(EdgeInsets())
         .swipeActions(edge: .trailing) {
@@ -286,9 +377,13 @@ struct LibraryView: View {
                         // The excerpt is why this note matched, so it belongs
                         // inside the card with it rather than stacked under a
                         // second one.
-                        NavigationLink(value: note) {
+                        Button {
+                            open(note)
+                        } label: {
                             NoteRowView(note: note, excerpt: hit.excerpt)
+                                .contentShape(.rect)
                         }
+                        .buttonStyle(.plain)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .listRowInsets(EdgeInsets())
@@ -378,6 +473,31 @@ struct LibraryView: View {
         .padding(Layout.Space.loose)
     }
 
+    /// The wide layout puts New Note on the list column and the rest in the
+    /// sidebar, so the two toolbars are not the same set.
+    @ToolbarContentBuilder
+    private var newNoteButton: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            Menu {
+                Button("From a Template", systemImage: "doc.on.doc") {
+                    isChoosingTemplate = true
+                }
+                Button("Paste or Dictate", systemImage: "sparkles") {
+                    isCapturing = true
+                }
+            } label: {
+                Label("New Note", systemImage: "square.and.pencil")
+            } primaryAction: {
+                isChoosingTemplate = true
+            }
+            // The app had no keyboard shortcuts at all — `keyboardShortcut`
+            // appeared zero times in twenty-three thousand lines — which on an
+            // iPad with a Magic Keyboard is the difference between a writing
+            // app and a demo. ⌘N is the one every app on the platform has.
+            .keyboardShortcut("n", modifiers: .command)
+        }
+    }
+
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
@@ -397,6 +517,7 @@ struct LibraryView: View {
             } primaryAction: {
                 isChoosingTemplate = true
             }
+            .keyboardShortcut("n", modifiers: .command)
         }
 
         ToolbarItem(placement: .topBarLeading) {
@@ -424,11 +545,25 @@ struct LibraryView: View {
     /// Leaves the request pending when the note is not in `notes` — it may
     /// simply not have loaded, and clearing here would lose a widget tap to a
     /// race with the query.
+    /// Opens a note in whichever layout is on screen.
+    ///
+    /// The two navigation models are genuinely different — the stack pushes and
+    /// the split view selects — and every caller wants "show me this note"
+    /// rather than to know which. Routing them all through here is what stops
+    /// a feature working on the phone and doing nothing on iPad.
+    private func open(_ note: Note) {
+        if sizeClass == .regular {
+            selectedNote = note
+        } else {
+            path.append(note)
+        }
+    }
+
     private func openPendingNote() {
         guard let request = navigation.pending,
               let note = notes.first(where: { $0.id == request.noteID })
         else { return }
-        path.append(note)
+        open(note)
         navigation.clear()
     }
 
@@ -437,7 +572,7 @@ struct LibraryView: View {
     private func duplicate(_ note: Note) {
         let copy = note.duplicated(into: context, titleSuffix: String(localized: "Copy"))
         haptics.play(.checklistCheck)
-        path.append(copy)
+        open(copy)
     }
 
     /// Makes the note **and opens it**.
@@ -460,7 +595,7 @@ struct LibraryView: View {
         do {
             let note = try TemplateInstantiator.makeNote(from: template, in: context)
             haptics.play(.checklistCheck)
-            path.append(note)
+            open(note)
         } catch {
             failure = error.localizedDescription
         }

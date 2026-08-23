@@ -37,3 +37,6 @@ upload.log
 *.cer
 *.certSigningRequest
 ExportOptions.generated.plist
+
+## Agent worktrees, created by the Workflow tool
+.claude/

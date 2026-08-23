@@ -546,6 +546,10 @@ struct NoteEditorView: View {
                 } label: {
                     Label("Read Mode", systemImage: "book.pages")
                 }
+                // ⌘R for read, ⌘⇧E for export — the two things you do to a
+                // finished note. Menu items carry their shortcut in the menu
+                // itself, so these are discoverable rather than folklore.
+                .keyboardShortcut("r", modifiers: .command)
                 // A locked note cannot be shared even while the vault is open.
                 // The point of locking it was to keep it in.
                 if VaultPolicy.isEligibleForSharing(note) {
@@ -554,6 +558,7 @@ struct NoteEditorView: View {
                     } label: {
                         Label("Share", systemImage: "square.and.arrow.up")
                     }
+                    .keyboardShortcut("e", modifiers: [.command, .shift])
                 }
 
                 Button {
