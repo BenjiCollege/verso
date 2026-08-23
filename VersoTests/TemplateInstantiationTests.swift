@@ -244,4 +244,53 @@ struct TemplateInstantiationTests {
         #expect(try note.orderedBlocks[2].decoded(as: ChecklistPayload.self).groupBy == .checked)
         #expect(try note.orderedBlocks[3].decoded(as: DividerPayload.self).style == .fleuron)
     }
+
+    // MARK: - Dating
+
+    /// A note made from a template is stamped with the moment it was made, and
+    /// its title agrees with that stamp.
+    ///
+    /// Both halves matter and they are separate mechanisms: `Note.init` copies
+    /// the date into `createdAt` *and* `modifiedAt`, while the title comes from
+    /// substituting tokens into `titleFormat`. Nothing previously asserted they
+    /// were handed the same value, so a note could have been filed under one
+    /// date and named after another.
+    @Test("A note is stamped with the moment it was made")
+    func noteIsDatedAtCreation() throws {
+        let context = try makeContext()
+        let when = Date(timeIntervalSince1970: 1_760_000_000)
+
+        let template = Template(
+            id: "dating",
+            name: "Dating",
+            titleFormat: "Log — {date} {time}",
+            blocks: [Template.BlockSpec(type: "text", payload: .object([:]))]
+        )
+
+        let note = try TemplateInstantiator.makeNote(from: template, in: context, date: when)
+
+        #expect(note.createdAt == when)
+        #expect(note.modifiedAt == when)
+        #expect(note.title == TemplateInstantiator.title(from: template.titleFormat, date: when))
+        #expect(!note.title.contains("{"))
+    }
+
+    /// The default is *now*, not a fixed date — the parameter exists so tests can
+    /// pin it, and a caller that omits it must get the current moment.
+    @Test("Omitting the date means now")
+    func defaultDateIsNow() throws {
+        let context = try makeContext()
+        let before = Date()
+
+        let template = Template(
+            id: "dating-default",
+            name: "Dating",
+            blocks: [Template.BlockSpec(type: "text", payload: .object([:]))]
+        )
+        let note = try TemplateInstantiator.makeNote(from: template, in: context)
+
+        #expect(note.createdAt >= before)
+        #expect(note.createdAt <= Date())
+        #expect(note.modifiedAt == note.createdAt)
+    }
 }
