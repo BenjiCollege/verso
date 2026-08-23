@@ -15,6 +15,9 @@ struct RichTextEditor: UIViewRepresentable {
     let theme: Theme
     let stock: Stock
     let bodySize: CGFloat
+    /// The reader's face and leading. `bodySize` already carries their text
+    /// scale; these two reach the prose through `AttributedText`.
+    let reading: ReadingPreferences
     let session: TextEditingSession
     /// Dims paragraphs other than the caret's. Applied as rendering attributes,
     /// which is display-only: no re-layout, and nothing written to the note.
@@ -70,7 +73,8 @@ struct RichTextEditor: UIViewRepresentable {
         guard width > 0 else { return nil }
         let fitted = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
         // An empty paragraph still has to be tall enough to tap.
-        return CGSize(width: width, height: max(fitted.height, bodySize * Typography.Role.body.lineHeightMultiple))
+        let minimum = Typography.contentLineHeight(forSize: bodySize, reading: reading)
+        return CGSize(width: width, height: max(fitted.height, minimum))
     }
 
     static func dismantleUIView(_ textView: VersoTextView, coordinator: RichTextCoordinator) {
@@ -98,6 +102,11 @@ final class RichTextCoordinator: NSObject, UITextViewDelegate, RichTextCommandTa
         let stockID: String
         let bodySize: CGFloat
         let grain: Double
+        /// Face and leading, so changing either re-renders. Everything the
+        /// rendered text depends on has to be in this key — anything left out
+        /// is a control that appears to do nothing.
+        let typeface: ContentTypeface
+        let lineSpacingScale: Double
     }
 
     init(parent: RichTextEditor) {
@@ -119,7 +128,9 @@ final class RichTextCoordinator: NSObject, UITextViewDelegate, RichTextCommandTa
             themeID: parent.theme.id,
             stockID: parent.stock.id,
             bodySize: parent.bodySize,
-            grain: parent.theme.grain
+            grain: parent.theme.grain,
+            typeface: parent.reading.typeface,
+            lineSpacingScale: parent.reading.lineSpacingScale
         )
 
         let ruleChanged = layoutDelegate.snapshot.containerWidth != textView.textContainer.size.width
@@ -162,12 +173,14 @@ final class RichTextCoordinator: NSObject, UITextViewDelegate, RichTextCommandTa
         textView.attributedText = AttributedText.rendered(
             semantic,
             theme: parent.theme,
-            bodySize: parent.bodySize
+            bodySize: parent.bodySize,
+            reading: parent.reading
         )
         textView.typingAttributes = AttributedText.typingAttributes(
             style: pendingTypingStyle,
             theme: parent.theme,
-            bodySize: parent.bodySize
+            bodySize: parent.bodySize,
+            reading: parent.reading
         )
         if let selection, selection.upperBound <= textView.attributedText.length {
             textView.selectedRange = selection
@@ -294,7 +307,8 @@ final class RichTextCoordinator: NSObject, UITextViewDelegate, RichTextCommandTa
             textView.typingAttributes = AttributedText.typingAttributes(
                 style: pendingTypingStyle,
                 theme: parent.theme,
-                bodySize: parent.bodySize
+                bodySize: parent.bodySize,
+                reading: parent.reading
             )
             parent.session.update(style: pendingTypingStyle)
             return

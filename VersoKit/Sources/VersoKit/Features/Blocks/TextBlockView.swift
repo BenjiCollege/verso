@@ -40,6 +40,7 @@ struct TextBlockView: View {
                 theme: theme,
                 stock: stock,
                 bodySize: scaledBodySize,
+                reading: reading,
                 session: session,
                 isFocusModeActive: isFocusModeActive,
                 isCaretSuppressed: isCaretSuppressed,

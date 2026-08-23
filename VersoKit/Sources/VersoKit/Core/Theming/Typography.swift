@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// The type system from section 6.
 ///
@@ -126,6 +127,24 @@ enum Typography {
     static func lineSpacing(forSize size: CGFloat, multiple: CGFloat) -> CGFloat {
         max(0, size * (multiple - intrinsicLineHeightMultiple))
     }
+
+    /// The line height prose is actually set at, reader's adjustment included.
+    ///
+    /// The single source for it, because three things have to agree or the
+    /// app's central idea breaks: the paragraph style TextKit lays the text
+    /// out with, the ruled lines `PageBackground` draws, and the minimum height
+    /// an empty editor reserves. Ruled paper only means anything while the text
+    /// sits on the rules — let the reader stretch the leading without moving
+    /// the rules and every line drifts off the paper it is printed on.
+    static func contentLineHeightMultiple(_ reading: ReadingPreferences) -> CGFloat {
+        Role.body.lineHeightMultiple * reading.lineSpacingScale
+    }
+
+    /// The distance between two ruled lines, for a body size that already has
+    /// Dynamic Type and the reader's text scale in it.
+    static func contentLineHeight(forSize size: CGFloat, reading: ReadingPreferences) -> CGFloat {
+        size * contentLineHeightMultiple(reading)
+    }
 }
 
 // MARK: - Application
@@ -200,6 +219,20 @@ enum ContentTypeface: String, CaseIterable, Identifiable, Sendable {
         case .serif: .content
         case .sans: .chrome
         case .mono: .mono
+        }
+    }
+
+    /// The UIKit equivalent of `family.design`, for the TextKit path.
+    ///
+    /// SwiftUI prose goes through `Font.Design`; the editor and Read Mode build
+    /// a `UIFont` and need the same choice expressed the other way. Kept beside
+    /// `family` so the two cannot drift — a reader who picks Mono should get
+    /// SF Mono in the toolbar labels *and* in what they are writing.
+    var uiDesign: UIFontDescriptor.SystemDesign? {
+        switch self {
+        case .serif: .serif
+        case .sans: .default
+        case .mono: .monospaced
         }
     }
 

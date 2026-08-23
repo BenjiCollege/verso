@@ -89,16 +89,17 @@ enum AttributedText {
     static func rendered(
         _ text: NSAttributedString,
         theme: Theme,
-        bodySize: CGFloat
+        bodySize: CGFloat,
+        reading: ReadingPreferences
     ) -> NSAttributedString {
         let result = NSMutableAttributedString(attributedString: text)
         let full = NSRange(location: 0, length: result.length)
 
         result.addAttributes(
             [
-                .font: font(for: [], size: bodySize),
+                .font: font(for: [], size: bodySize, typeface: reading.typeface),
                 .foregroundColor: UIColor(theme.ink),
-                .paragraphStyle: paragraphStyle(bodySize: bodySize),
+                .paragraphStyle: paragraphStyle(bodySize: bodySize, reading: reading),
             ],
             range: full
         )
@@ -107,7 +108,11 @@ enum AttributedText {
             let style = InlineStyle(rawValue: (value as? NSNumber)?.intValue ?? 0)
             guard !style.isEmpty else { return }
 
-            result.addAttribute(.font, value: font(for: style, size: bodySize), range: range)
+            result.addAttribute(
+                .font,
+                value: font(for: style, size: bodySize, typeface: reading.typeface),
+                range: range
+            )
 
             if style.contains(.underline) {
                 result.addAttributes([
@@ -146,12 +151,13 @@ enum AttributedText {
     static func typingAttributes(
         style: InlineStyle,
         theme: Theme,
-        bodySize: CGFloat
+        bodySize: CGFloat,
+        reading: ReadingPreferences
     ) -> [NSAttributedString.Key: Any] {
         var attributes: [NSAttributedString.Key: Any] = [
-            .font: font(for: style, size: bodySize),
+            .font: font(for: style, size: bodySize, typeface: reading.typeface),
             .foregroundColor: UIColor(style.contains(.code) ? theme.inkSecondary : theme.ink),
-            .paragraphStyle: paragraphStyle(bodySize: bodySize),
+            .paragraphStyle: paragraphStyle(bodySize: bodySize, reading: reading),
         ]
         if !style.isEmpty {
             attributes[VersoTextAttribute.inlineStyle] = NSNumber(value: style.rawValue)
@@ -167,15 +173,24 @@ enum AttributedText {
 
     // MARK: - Fonts
 
-    /// New York for prose, SF Mono for code, with bold and italic applied as
-    /// symbolic traits so the family's own cuts are used rather than a synthetic
-    /// slant.
-    static func font(for style: InlineStyle, size: CGFloat) -> UIFont {
+    /// The reader's face for prose, SF Mono for code, with bold and italic
+    /// applied as symbolic traits so the family's own cuts are used rather than
+    /// a synthetic slant.
+    ///
+    /// The typeface used to be hardcoded to serif here, which is why the
+    /// Typeface control moved every heading and caption in the app and left the
+    /// prose in New York — the chrome goes through `versoText`, which honours
+    /// the preference, and the prose comes through this, which did not.
+    ///
+    /// A code run stays monospaced whatever the reader picked: that is what
+    /// marks it as code.
+    static func font(for style: InlineStyle, size: CGFloat, typeface: ContentTypeface) -> UIFont {
         let base: UIFont
         if style.contains(.code) {
             base = UIFont.monospacedSystemFont(ofSize: size, weight: .regular)
-        } else if let serif = UIFont.systemFont(ofSize: size).fontDescriptor.withDesign(.serif) {
-            base = UIFont(descriptor: serif, size: size)
+        } else if let design = typeface.uiDesign,
+                  let descriptor = UIFont.systemFont(ofSize: size).fontDescriptor.withDesign(design) {
+            base = UIFont(descriptor: descriptor, size: size)
         } else {
             base = UIFont.systemFont(ofSize: size)
         }
@@ -190,9 +205,13 @@ enum AttributedText {
         return UIFont(descriptor: descriptor, size: size)
     }
 
-    static func paragraphStyle(bodySize: CGFloat) -> NSParagraphStyle {
+    /// The leading is the reader's, and it is the same number `PageBackground`
+    /// draws its rules at — see `Typography.contentLineHeightMultiple`. It was
+    /// previously the fixed body multiple, so the Line Spacing control moved
+    /// nothing on the page.
+    static func paragraphStyle(bodySize: CGFloat, reading: ReadingPreferences) -> NSParagraphStyle {
         let style = NSMutableParagraphStyle()
-        style.lineHeightMultiple = Typography.Role.body.lineHeightMultiple
+        style.lineHeightMultiple = Typography.contentLineHeightMultiple(reading)
         style.paragraphSpacing = bodySize * 0.35
         return style
     }
