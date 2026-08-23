@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 /// A picture in a note.
@@ -18,6 +19,15 @@ struct ImagePayload: BlockPayload {
     /// What the picture shows, for VoiceOver. A picture with no description is
     /// a hole in the note for anyone who cannot see it.
     var accessibilityDescription: String
+
+    /// The page width to reserve a height against when the real one is not
+    /// available.
+    ///
+    /// The editor knows how wide its column is; a share extension and a scan
+    /// sheet do not, and neither can ask. Getting it wrong costs a slightly
+    /// wrong reserved height until the block is next laid out — never a wrong
+    /// picture — so one shared guess beats each caller inventing its own.
+    static let assumedPageWidth: CGFloat = 320
 
     static let minimumHeight: Double = 80
     static let maximumHeight: Double = 1_200

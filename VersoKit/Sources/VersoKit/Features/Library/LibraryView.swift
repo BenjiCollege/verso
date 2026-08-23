@@ -46,6 +46,13 @@ struct LibraryView: View {
         Dictionary(notes.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     }
 
+    /// The folder the library is filtered to, if it is filtered to one. What
+    /// makes a scanned receipt land in the trip you are already looking at.
+    private var currentFolder: Folder? {
+        guard case .folder(let id) = filter else { return nil }
+        return notes.compactMap(\.folder).first { $0.id == id }
+    }
+
     private var pinnedNotes: [Note] { visibleNotes.filter(\.isPinned) }
     private var unpinnedNotes: [Note] { visibleNotes.filter { !$0.isPinned } }
     private var unfiledCount: Int { notes.count(where: LibraryFilter.unfiled.matches) }
@@ -71,6 +78,7 @@ struct LibraryView: View {
     @State private var filter: LibraryFilter = .all
     @State private var organising: Note?
     @State private var isShowingGraph = false
+    @State private var isScanningReceipt = false
 
     /// Which notes are ticked, and whether we are ticking at all.
     ///
@@ -113,6 +121,14 @@ struct LibraryView: View {
         }
         .sheet(isPresented: $isShowingTrash) {
             TrashView()
+        }
+        .sheet(isPresented: $isScanningReceipt) {
+            // Filed into whatever folder is being looked at, so scanning three
+            // receipts while filtered to a trip files all three there without
+            // anyone choosing a folder three times.
+            ReceiptScanSheet(folder: currentFolder) { note in
+                open(note)
+            }
         }
         .sheet(isPresented: $isShowingGraph) {
             NavigationStack {
@@ -567,6 +583,9 @@ struct LibraryView: View {
                 Button("Paste or Dictate", systemImage: "sparkles") {
                     isCapturing = true
                 }
+                Button("Scan a Receipt", systemImage: "doc.viewfinder") {
+                    isScanningReceipt = true
+                }
             } label: {
                 Label("New Note", systemImage: "square.and.pencil")
             } primaryAction: {
@@ -593,6 +612,11 @@ struct LibraryView: View {
                     isCapturing = true
                 } label: {
                     Label("Paste or Dictate", systemImage: "sparkles")
+                }
+                Button {
+                    isScanningReceipt = true
+                } label: {
+                    Label("Scan a Receipt", systemImage: "doc.viewfinder")
                 }
             } label: {
                 Label("New Note", systemImage: "square.and.pencil")
