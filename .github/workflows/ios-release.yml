@@ -70,10 +70,13 @@ jobs:
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
           set -euo pipefail
-          # One key does both jobs: xcodebuild uses it to create certificates
-          # and profiles on demand, and altool uses it to upload. That is why
-          # there is no exporting-a-.p12-and-base64ing-it-into-a-secret dance
-          # anywhere in this file.
+          # One key does two jobs: xcodebuild uses it to create and update
+          # provisioning profiles on demand, and altool uses it to upload.
+          #
+          # It used to do a third — create certificates — and that is precisely
+          # what the next step exists to stop. The .p12 dance this file once
+          # boasted of avoiding turns out to be the thing that keeps an account
+          # from running out of certificates. See the note there.
           #
           # `~/private_keys` is one of the four locations altool searches.
           mkdir -p ~/private_keys
@@ -90,6 +93,117 @@ jobs:
             exit 1
           fi
           echo "Key AuthKey_${ASC_KEY_ID}.p8 staged and parses."
+
+      - name: Import the signing identities
+        env:
+          SIGNING_P12: ${{ secrets.SIGNING_P12 }}
+          SIGNING_P12_PASSWORD: ${{ secrets.SIGNING_P12_PASSWORD }}
+        run: |
+          set -euo pipefail
+          # The runner brings its own certificates and creates none.
+          #
+          # This job used to have no identity of its own and let
+          # `-allowProvisioningUpdates` conjure one. That reads as elegant and
+          # is a slow leak: a GitHub runner is destroyed after every job, so its
+          # keychain starts empty every time, so Xcode asks Apple for a *brand
+          # new* certificate on every single release. Apple caps how many an
+          # account may hold. This one hit the cap on 22 Aug 2026 — "Choose a
+          # certificate to revoke. Your account has reached the maximum number
+          # of certificates" — and revoking one would have bought exactly one
+          # more run before the same failure.
+          #
+          # Provisioning profiles are still created on demand during the
+          # archive. Those are not capped, and they are derived from a
+          # certificate rather than the other way round, so there is nothing to
+          # manage here beyond the identity itself.
+          #
+          # Both types are needed, for reasons the archive step explains:
+          # archive signs with Apple Development, export re-signs with Apple
+          # Distribution.
+          if [ -z "${SIGNING_P12:-}" ] || [ -z "${SIGNING_P12_PASSWORD:-}" ]; then
+            echo "::error::SIGNING_P12 and SIGNING_P12_PASSWORD are not set."
+            echo "::error::One-time setup is in docs/signing.md and takes about five minutes."
+            echo "::error::Failing here on purpose: without them this job would mint another"
+            echo "::error::certificate and exhaust the account again, which is the bug this"
+            echo "::error::step exists to end."
+            exit 1
+          fi
+
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          P12="$RUNNER_TEMP/signing.p12"
+
+          # Whitespace stripped first: a base64 secret pasted through a browser
+          # arrives wrapped, and openssl treats a stray newline as the end.
+          tr -d '[:space:]' <<<"$SIGNING_P12" | openssl base64 -d -A -out "$P12" 2>/dev/null || true
+          if [ ! -s "$P12" ]; then
+            echo "::error::SIGNING_P12 is not valid base64. Re-upload it with:"
+            echo "::error::base64 -i Signing.p12 | gh secret set SIGNING_P12"
+            exit 1
+          fi
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          # No auto-lock. The default is 300 seconds, an archive takes longer,
+          # and a keychain that locks partway through fails codesign on whatever
+          # targets had not been reached yet — which reads like a signing fault
+          # rather than a timeout, in a different target every run.
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+
+          if ! security import "$P12" -k "$KEYCHAIN" -P "$SIGNING_P12_PASSWORD" \
+               -A -t cert -f pkcs12 >/dev/null 2>&1; then
+            echo "::error::Could not open the .p12. The usual cause is that"
+            echo "::error::SIGNING_P12_PASSWORD is not the password it was exported with."
+            exit 1
+          fi
+          rm -f "$P12"
+
+          # Without this, codesign stops on a UI prompt that nobody is there to
+          # answer and the job hangs until the 90-minute timeout kills it.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
+
+          # Prepended, not substituted. Dropping the login keychain out of the
+          # search list breaks unrelated tooling in ways that take an afternoon.
+          security list-keychains -d user -s "$KEYCHAIN" \
+            $(security list-keychains -d user | tr -d '"')
+          security default-keychain -s "$KEYCHAIN"
+
+          # Counted, never printed: a certificate's common name carries the team
+          # name, and this repository is public.
+          #
+          # `-v` means "valid only". Comparing it against the unfiltered list
+          # separates two failures that otherwise produce the same message: a
+          # .p12 that was missing an identity, and a .p12 whose identity is
+          # present but whose chain does not validate. The second is nearly
+          # always a missing Apple WWDR intermediate and has a different fix.
+          COUNTED='^[[:space:]]*[0-9]+\)'
+          ALL=$(security find-identity -p codesigning "$KEYCHAIN" | grep -cE "$COUNTED" || true)
+          FOUND=$(security find-identity -v -p codesigning "$KEYCHAIN" || true)
+          VALID=$(grep -cE "$COUNTED" <<<"$FOUND" || true)
+
+          if [ "$ALL" -gt 0 ] && [ "$VALID" -eq 0 ]; then
+            echo "::error::$ALL identities imported, but none of them is valid for signing."
+            echo "::error::That is almost always a missing Apple WWDR intermediate: the"
+            echo "::error::certificate is there, the chain above it is not, so nothing trusts it."
+            echo "::error::Re-export from Keychain Access selecting the identities themselves"
+            echo "::error::(not just the certificates), which carries the chain with them."
+            exit 1
+          fi
+
+          have() { grep -qF "$1" <<<"$FOUND"; }
+
+          if have "Apple Development"; then echo "Apple Development identity present."; fi
+          if have "Apple Distribution"; then echo "Apple Distribution identity present."; fi
+
+          if ! have "Apple Development" || ! have "Apple Distribution"; then
+            echo "::error::The .p12 must hold BOTH an Apple Development and an Apple"
+            echo "::error::Distribution identity, each with its private key. Archive signs"
+            echo "::error::with the first, export re-signs with the second, and a .p12"
+            echo "::error::missing either one fails halfway through with a vaguer message."
+            echo "::error::Export both together from Keychain Access — see docs/signing.md."
+            exit 1
+          fi
 
       - name: Check the credentials agree before spending an archive on them
         env:
@@ -142,6 +256,14 @@ jobs:
           #
           # The verification step below exists so that if this ever regresses,
           # it fails here instead of six months later.
+          #
+          # `-allowProvisioningUpdates` stays, and now only creates profiles:
+          # the identities it would otherwise have minted are already in the
+          # keychain. Note that automatic signing archives with *Apple
+          # Development* and leaves distribution to the export below — that is
+          # Apple's flow, not a misconfiguration, and forcing
+          # CODE_SIGN_IDENTITY="Apple Distribution" here fights it and fails.
+          # It is also why the imported .p12 has to carry both identities.
           set -o pipefail && xcodebuild archive \
             -project Verso.xcodeproj \
             -scheme Verso \
@@ -246,6 +368,11 @@ jobs:
           echo "▸ Uploaded build ${{ inputs.build_number }}."
           echo "▸ Processing usually takes 5–60 minutes. TestFlight will email when it is ready."
 
-      - name: Remove the key
+      - name: Remove the credentials
         if: always()
-        run: rm -rf ~/private_keys
+        run: |
+          rm -rf ~/private_keys
+          # The runner is discarded anyway; this is for the case where it is not
+          # (a self-hosted runner, or a rerun on a warm machine), where a
+          # leftover keychain would be found by the next job and quietly used.
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
