@@ -96,6 +96,9 @@ final class RichTextCoordinator: NSObject, UITextViewDelegate, RichTextCommandTa
     private var lastAppliedRendering: RenderingKey?
     /// Marks that apply to the next character typed at an empty selection.
     private var pendingTypingStyle: InlineStyle = []
+    /// Whether any paragraph is currently dimmed, so the clearing pass can be
+    /// skipped when there is nothing to clear.
+    private var hasDimmedParagraphs = false
 
     private struct RenderingKey: Equatable {
         let themeID: String
@@ -191,10 +194,24 @@ final class RichTextCoordinator: NSObject, UITextViewDelegate, RichTextCommandTa
     /// storage, so nothing here can end up archived into the note.
     private func applyFocusDimming(to textView: VersoTextView) {
         guard let layoutManager = textView.textLayoutManager else { return }
-        let document = layoutManager.documentRange
-        layoutManager.invalidateRenderingAttributes(for: document)
 
-        guard parent.isFocusModeActive, textView.isFirstResponder else { return }
+        let shouldDim = parent.isFocusModeActive && textView.isFirstResponder
+
+        // The invalidation used to run before this check, on every selection
+        // change, in every text block — so with Focus Mode off, which is the
+        // default, the editor invalidated the whole document's rendering
+        // attributes on every keystroke and every caret move to clear dimming
+        // that was never applied.
+        //
+        // It still has to run when there *is* dimming, because invalidating is
+        // how the previous paragraph gets un-dimmed; it just no longer runs
+        // when there is nothing to undo.
+        guard shouldDim || hasDimmedParagraphs else { return }
+
+        layoutManager.invalidateRenderingAttributes(for: layoutManager.documentRange)
+        hasDimmedParagraphs = false
+
+        guard shouldDim else { return }
 
         let text = textView.text as NSString
         let paragraph = text.paragraphRange(for: textView.selectedRange)
@@ -209,6 +226,7 @@ final class RichTextCoordinator: NSObject, UITextViewDelegate, RichTextCommandTa
         ] where range.length > 0 {
             guard let textRange = layoutManager.textRange(for: range) else { continue }
             layoutManager.setRenderingAttributes([.foregroundColor: dimmed], for: textRange)
+            hasDimmedParagraphs = true
         }
     }
 
