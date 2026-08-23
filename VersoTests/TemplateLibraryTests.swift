@@ -146,6 +146,36 @@ struct TemplateLibraryTests {
         #expect(formulas.contains { $0.expression.contains("sumproduct") })
     }
 
+    /// Which templates put a clock in the title, and why.
+    ///
+    /// A scheduled conversation can happen several times in one day, and the
+    /// time is the only thing that tells two of them apart — three notes called
+    /// "Meeting — Aug 22" are indistinguishable in a list. Everything else is
+    /// once-a-day or once-a-week, where a clock is noise: nobody wants a
+    /// shopping list called "Grocery Run — Aug 22, 4:12 PM".
+    ///
+    /// Asserted in both directions, because the interesting failure is the
+    /// second one — somebody adding `{time}` to a template by reflex.
+    @Test("Only the scheduled conversations carry a time")
+    func onlyConversationsAreTimed() {
+        let timed: Set<String> = ["meeting-notes", "one-on-one", "interview", "standup"]
+
+        for template in catalog.all {
+            let format = template.titleFormat ?? ""
+            if timed.contains(template.id) {
+                #expect(
+                    format.contains("{time}"),
+                    "\(template.id) is a scheduled conversation and should carry a time"
+                )
+            } else {
+                #expect(
+                    !format.contains("{time}"),
+                    "\(template.id) is not a scheduled conversation — a clock in the title is noise"
+                )
+            }
+        }
+    }
+
     /// `project-brief` shipped as `"Brief — "`: an em dash with nothing after
     /// it, because the `{date}` token had been lost. Every note made from it
     /// was called "Brief — ". Nothing caught it because nothing had ever looked

@@ -5,7 +5,7 @@
   "summary": "Questions, evidence, and a rating per area — filled in during, not after.",
   "systemImage": "person.crop.rectangle",
   "category": "work",
-  "titleFormat": "Interview — {date}",
+  "titleFormat": "Interview — {date}, {time}",
   "blocks": [
     { "type": "heading", "payload": { "level": 1, "text": "Candidate" } },
     { "type": "heading", "payload": { "level": 3, "text": "Questions to cover" } },

@@ -349,10 +349,18 @@ struct NoteEditorView: View {
     }
 
     private var titleField: some View {
+        // `axis: .vertical` so the title wraps instead of truncating.
+        //
+        // A single-line field scrolls its text out of sight, and the title is
+        // the largest thing on the page and the one a reader uses to know where
+        // they are — "Meeting — Aug 22, 1…" is the worst possible thing to
+        // shorten. Long titles were always reachable by typing one; the timed
+        // templates just made it the default.
         TextField(
             "Title",
             text: $note.title,
-            prompt: Text("Untitled").foregroundStyle(theme.inkTertiary)
+            prompt: Text("Untitled").foregroundStyle(theme.inkTertiary),
+            axis: .vertical
         )
         .textFieldStyle(.plain)
         .versoText(.display)

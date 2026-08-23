@@ -5,7 +5,7 @@
   "summary": "Yesterday, today, blockers. Kept short on purpose.",
   "systemImage": "sun.horizon",
   "category": "work",
-  "titleFormat": "Standup — {date}",
+  "titleFormat": "Standup — {date}, {time}",
   "blocks": [
     { "type": "heading", "payload": { "level": 3, "text": "Yesterday" } },
     { "type": "list", "payload": { "style": "bullet", "items": [{ "text": "" }] } },

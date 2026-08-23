@@ -5,7 +5,7 @@
   "summary": "Their agenda first, then yours, then what carries over.",
   "systemImage": "person.2",
   "category": "work",
-  "titleFormat": "1:1 — {date}",
+  "titleFormat": "1:1 — {date}, {time}",
   "blocks": [
     { "type": "heading", "payload": { "level": 2, "text": "Their agenda" } },
     { "type": "list", "payload": { "style": "bullet", "items": [{ "text": "" }] } },
