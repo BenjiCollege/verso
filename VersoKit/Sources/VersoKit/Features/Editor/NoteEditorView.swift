@@ -116,7 +116,7 @@ struct NoteEditorView: View {
         .toolbar { toolbarContent }
         .safeAreaInset(edge: .bottom, spacing: 0) { keyboardAccessories }
         .sheet(isPresented: $isReordering) {
-            BlockReorderSheet(note: note)
+            BlockReorderSheet(note: note, actions: blockActions)
         }
         .sheet(isPresented: $isChangingLook) {
             NoteLookSheet(note: note)
