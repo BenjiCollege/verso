@@ -1,6 +1,8 @@
 import CoreGraphics
 import Foundation
+import PDFKit
 import Testing
+import UIKit
 @testable import VersoKit
 
 @Suite("Document annotations")
@@ -244,5 +246,84 @@ struct AttachmentPayloadTests {
         #expect(flattened.hasSuffix(".pdf"))
         #expect(flattened.contains("Lease"))
         #expect(!flattened.contains(".pdf ("), "the original extension should not be doubled up")
+    }
+}
+
+/// The page raster cache.
+///
+/// `DocumentStore.image` is called from `body`, so it runs on every pass — and
+/// `body` re-runs on every tick of a highlight drag. Without a cache, dragging
+/// across a paragraph re-rendered the whole page at 2× for each frame.
+///
+/// What is worth testing is not the speed but the *identity*: a cache that
+/// returns the wrong page is far worse than no cache.
+@Suite("Document raster cache")
+struct DocumentRasterCacheTests {
+
+    /// A one-page PDF of a given size, written to a real file — the cache keys
+    /// on `documentURL`, so an in-memory document would not exercise it.
+    private func makeDocument(width: CGFloat, height: CGFloat) throws -> PDFDocument {
+        let bounds = CGRect(x: 0, y: 0, width: width, height: height)
+        let data = NSMutableData()
+        let consumer = try #require(CGDataConsumer(data: data))
+        var media = bounds
+        let context = try #require(CGContext(consumer: consumer, mediaBox: &media, nil))
+        context.beginPDFPage(nil)
+        context.setFillColor(UIColor.black.cgColor)
+        context.fill(CGRect(x: 0, y: 0, width: width / 2, height: height / 2))
+        context.endPDFPage()
+        context.closePDF()
+
+        let url = URL.temporaryDirectory.appending(path: "\(UUID().uuidString).pdf")
+        try (data as Data).write(to: url)
+        return try #require(PDFDocument(url: url))
+    }
+
+    @Test("The same page at the same width comes back identical")
+    func repeatedRenderIsCached() throws {
+        // The document is held for the length of the test on purpose:
+        // `PDFPage.document` is a back-reference, and a page whose document has
+        // gone reports `nil` — at which point the cache silently stops working
+        // because it can no longer identify what it is caching.
+        let document = try makeDocument(width: 200, height: 300)
+        let page = try #require(document.page(at: 0))
+
+        let first = try #require(DocumentStore.image(of: page, fittingWidth: 120))
+        let second = try #require(DocumentStore.image(of: page, fittingWidth: 120))
+
+        #expect(first === second)
+    }
+
+    /// Rotating the device asks for a different width. Serving the old raster
+    /// would show the portrait rendering stretched.
+    @Test("A different width is a different rendering")
+    func widthIsPartOfTheIdentity() throws {
+        let document = try makeDocument(width: 200, height: 300)
+        let page = try #require(document.page(at: 0))
+
+        let narrow = try #require(DocumentStore.image(of: page, fittingWidth: 120))
+        let wide = try #require(DocumentStore.image(of: page, fittingWidth: 240))
+
+        #expect(narrow !== wide)
+        #expect(narrow.size.width != wide.size.width)
+    }
+
+    /// The reason the key is the document's URL and not `ObjectIdentifier`:
+    /// an address is reused, so a closed document's cached pages could be
+    /// served to whatever is allocated where it used to be.
+    @Test("Two documents never serve each other's pages")
+    func documentsDoNotCollide() throws {
+        let tallDocument = try makeDocument(width: 200, height: 400)
+        let squatDocument = try makeDocument(width: 200, height: 100)
+        let tall = try #require(tallDocument.page(at: 0))
+        let squat = try #require(squatDocument.page(at: 0))
+
+        let a = try #require(DocumentStore.image(of: tall, fittingWidth: 100))
+        let b = try #require(DocumentStore.image(of: squat, fittingWidth: 100))
+
+        #expect(a !== b)
+        // Same requested width, different page shapes — so a collision would
+        // show up as the wrong height.
+        #expect(a.size.height != b.size.height)
     }
 }

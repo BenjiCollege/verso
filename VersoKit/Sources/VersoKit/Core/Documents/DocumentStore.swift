@@ -84,12 +84,17 @@ enum DocumentStore {
         let bounds = page.bounds(for: .mediaBox)
         guard bounds.width > 0, width > 0 else { return nil }
 
+        if let key = cacheKey(for: page, width: width, scale: scale),
+           let hit = rasters.object(forKey: key) {
+            return hit
+        }
+
         let size = CGSize(width: width, height: width * bounds.height / bounds.width)
         let format = UIGraphicsImageRendererFormat.default()
         format.scale = scale
         format.opaque = true
 
-        return UIGraphicsImageRenderer(size: size, format: format).image { context in
+        let rendered = UIGraphicsImageRenderer(size: size, format: format).image { context in
             UIColor.white.setFill()
             context.fill(CGRect(origin: .zero, size: size))
 
@@ -97,6 +102,46 @@ enum DocumentStore {
             context.cgContext.scaleBy(x: size.width / bounds.width, y: -size.height / bounds.height)
             page.draw(with: .mediaBox, to: context.cgContext)
         }
+
+        if let key = cacheKey(for: page, width: width, scale: scale) {
+            // Cost in pixels, so the cache evicts the big pages first.
+            rasters.setObject(rendered, forKey: key, cost: Int(size.width * size.height * scale * scale))
+        }
+        return rendered
+    }
+
+    // MARK: - Raster cache
+
+    /// Rendered pages, kept between renders.
+    ///
+    /// `image(of:fittingWidth:)` is called from `body`, so without this the
+    /// viewer rasterised the page at 2× on every pass — and `body` re-runs on
+    /// every tick of a highlight drag, so dragging across a paragraph
+    /// re-rendered the whole page for each frame of the gesture. `ImageStore`
+    /// hit the same problem with photographs and solved it the same way.
+    ///
+    /// `NSCache` is thread-safe and evicts under memory pressure by itself,
+    /// which matters more here than for photographs: a long PDF scrolled end to
+    /// end would otherwise hold every page it had ever drawn.
+    nonisolated(unsafe) private static let rasters = NSCache<NSString, UIImage>()
+
+    /// Identifies a rendering, not a page.
+    ///
+    /// Keyed on the document's **URL**, not on `ObjectIdentifier`. An
+    /// `ObjectIdentifier` is the object's address, and addresses are reused:
+    /// close one PDF, open another, and the second can land where the first was
+    /// and be served the first one's pages. A file here is written once under a
+    /// UUID and deleted whole, so its URL is unique and stable — and a new
+    /// attachment is a new UUID, so a cached raster cannot go stale against the
+    /// bytes on disk.
+    ///
+    /// Width and scale are in the key because the same page rendered for a
+    /// different column width is a different image — rotating the device must
+    /// not be served the portrait raster stretched.
+    private static func cacheKey(for page: PDFPage, width: CGFloat, scale: CGFloat) -> NSString? {
+        guard let document = page.document, let url = document.documentURL else { return nil }
+        let index = document.index(for: page)
+        return "\(url.absoluteString)#\(index)@\(Int(width.rounded()))x\(scale)" as NSString
     }
 
     /// A small JPEG of the first page, kept inside the block payload so an

@@ -101,9 +101,21 @@ struct DocumentViewer: View {
 
                     highlightLayer(pageSize: pageSize, displaySize: displaySize)
 
-                    if mode == .ink {
-                        inkLayer(pageSize: pageSize, scale: scale, displaySize: displaySize)
-                    }
+                    // Ink is always drawn, and only *editable* in ink mode.
+                    //
+                    // It used to be built only `if mode == .ink`, so switching
+                    // to Highlight or Read made every stroke on the page
+                    // disappear. Highlights survived the same switch, and the
+                    // raster underneath carries neither — so the page went from
+                    // annotated to blank and read as data loss. It was still on
+                    // disk, which is worse in a way: nothing told the user it
+                    // would come back.
+                    inkLayer(
+                        pageSize: pageSize,
+                        scale: scale,
+                        displaySize: displaySize,
+                        isEditable: mode == .ink
+                    )
 
                     if let rect = pendingHighlightRect {
                         Rectangle()
@@ -140,18 +152,26 @@ struct DocumentViewer: View {
     }
 
     /// Ink is stored in page space, so it lands identically at any width.
-    private func inkLayer(pageSize: CGSize, scale: CGFloat, displaySize: CGSize) -> some View {
+    private func inkLayer(
+        pageSize: CGSize,
+        scale: CGFloat,
+        displaySize: CGSize,
+        isEditable: Bool
+    ) -> some View {
         InkCanvasView(
             drawing: Binding(
                 get: { scaled(payload.annotations.drawing(onPage: pageIndex) ?? Data(), by: scale) },
                 set: { payload.annotations.setDrawing(scaled($0, by: 1 / scale), onPage: pageIndex) }
             ),
             theme: theme,
-            isEditable: true,
+            isEditable: isEditable,
             onChange: { _ in },
             onStrokeTapped: nil
         )
         .frame(width: displaySize.width, height: displaySize.height)
+        // Read-only ink must not eat the highlight drag or the scroll — it is
+        // a layer of the page then, not a control.
+        .allowsHitTesting(isEditable)
     }
 
     // MARK: - Highlighting
@@ -293,7 +313,14 @@ struct PageThumbnailStrip: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal) {
-                HStack(spacing: Layout.Space.snug) {
+                // Lazy, because each thumbnail rasterises its page. A plain
+                // `HStack` builds every child immediately, so opening a
+                // 200-page PDF meant 200 synchronous page renders before the
+                // first frame — and again whenever `selection` changed, since
+                // that rebuilds the strip. `LazyHStack` draws the handful that
+                // are actually on screen; `DocumentStore`'s raster cache keeps
+                // the ones already drawn from being redrawn on the way back.
+                LazyHStack(spacing: Layout.Space.snug) {
                     ForEach(0..<document.pageCount, id: \.self) { index in
                         thumbnail(index)
                             .id(index)
