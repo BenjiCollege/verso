@@ -145,6 +145,39 @@ struct TemplateLibraryTests {
             .map { try $0.decoded(as: FormulaPayload.self) }
         #expect(formulas.contains { $0.expression.contains("sumproduct") })
     }
+
+    /// `project-brief` shipped as `"Brief — "`: an em dash with nothing after
+    /// it, because the `{date}` token had been lost. Every note made from it
+    /// was called "Brief — ". Nothing caught it because nothing had ever looked
+    /// at a *resolved* title — the suite checked that templates instantiate,
+    /// not that they produce a name a person would recognise.
+    @Test("Every template resolves to a title someone would recognise")
+    func titlesResolveCleanly() {
+        let date = Date(timeIntervalSince1970: 1_000_000)
+
+        for template in catalog.all {
+            // An absent or deliberately empty format means "you name it" —
+            // `blank` and `recipe` both rely on that.
+            guard let format = template.titleFormat, !format.isEmpty else { continue }
+            let title = TemplateInstantiator.title(from: format, date: date)
+
+            #expect(
+                !title.contains("{"),
+                "\(template.id): an unsubstituted token survived — \(title)"
+            )
+            #expect(
+                title == title.trimmingCharacters(in: .whitespaces),
+                "\(template.id): resolves with stray whitespace — \(title)"
+            )
+            // A separator promises something after it.
+            if let tail = title.split(separator: "—").last, title.contains("—") {
+                #expect(
+                    !tail.trimmingCharacters(in: .whitespaces).isEmpty,
+                    "\(template.id): the em dash leads nowhere — \(title)"
+                )
+            }
+        }
+    }
 }
 
 @Suite("Exercise catalog")

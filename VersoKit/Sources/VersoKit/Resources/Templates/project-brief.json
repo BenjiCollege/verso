@@ -5,7 +5,7 @@
   "summary": "What we're doing, why, and how we'll know it worked.",
   "systemImage": "doc.badge.gearshape",
   "category": "work",
-  "titleFormat": "Brief — ",
+  "titleFormat": "Brief — {date}",
   "blocks": [
     { "type": "heading", "payload": { "level": 1, "text": "Project" } },
     { "type": "heading", "payload": { "level": 3, "text": "The problem" } },
