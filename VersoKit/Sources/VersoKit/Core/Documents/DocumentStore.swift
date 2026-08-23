@@ -23,7 +23,12 @@ enum DocumentStore {
 
     static func exists(_ assetID: UUID?) -> Bool {
         guard let assetID else { return false }
-        return FileManager.default.fileExists(atPath: url(for: assetID).path())
+        // `path()` percent-encodes, and every iOS container path contains
+        // "Application Support" — so the space became %20 and `fileExists`
+        // said no about a document that was right there. The card read "Not on
+        // this device" for a file the viewer then opened perfectly, which is
+        // why it went unnoticed: only the label was wrong.
+        return FileManager.default.fileExists(atPath: url(for: assetID).path(percentEncoded: false))
     }
 
     // MARK: - Importing
@@ -60,6 +65,68 @@ enum DocumentStore {
             byteCount: byteCount,
             thumbnail: thumbnailData(for: document.page(at: 0))
         )
+    }
+
+    // MARK: - Scanning
+
+    /// Writes photographed pages out as one PDF and describes it the same way
+    /// an import does.
+    ///
+    /// Deliberately lands in the same place, under the same kind of id, as
+    /// `importDocument`: the viewer, the annotation layers, both export modes
+    /// and the "not on this device" state all key off an `assetID` with a PDF
+    /// beside it. A scan stored any other way would make every one of them
+    /// learn about a second kind of attachment.
+    ///
+    /// The pages are embedded as JPEG rather than at whatever the camera
+    /// handed over — a five-page scan at full sensor resolution is tens of
+    /// megabytes of app container for a receipt, and the compression is
+    /// invisible on paper that VisionKit has already thresholded.
+    static func importScan(pages: [UIImage], named fileName: String? = nil) throws -> AttachmentPayload {
+        guard !pages.isEmpty else { throw DocumentError.emptyScan }
+
+        let document = PDFDocument()
+        for image in pages {
+            guard let page = PDFPage(image: image, options: [.compressionQuality: scanCompressionQuality]) else {
+                throw DocumentError.unreadable
+            }
+            document.insert(page, at: document.pageCount)
+        }
+
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        let assetID = UUID()
+        let destination = url(for: assetID)
+        try? FileManager.default.removeItem(at: destination)
+        guard document.write(to: destination) else { throw DocumentError.exportFailed }
+
+        // Read it back rather than describing the document still in memory:
+        // what the block points at is the file, and this is the one moment
+        // where an unreadable one can be thrown away instead of surfacing as
+        // an attachment that opens onto nothing.
+        guard let written = PDFDocument(url: destination) else {
+            try? FileManager.default.removeItem(at: destination)
+            throw DocumentError.unreadable
+        }
+
+        let byteCount = (try? destination.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+
+        return AttachmentPayload(
+            assetID: assetID,
+            fileName: fileName ?? scanFileName(),
+            pageCount: written.pageCount,
+            byteCount: byteCount,
+            thumbnail: thumbnailData(for: written.page(at: 0))
+        )
+    }
+
+    static let scanCompressionQuality = 0.8
+
+    /// A scan has no name of its own, and "Scan.pdf" repeated down a note tells
+    /// you nothing. The date is the only thing that distinguishes one receipt
+    /// from the next.
+    static func scanFileName(date: Date = .now) -> String {
+        "\(String(localized: "Scan")) \(date.formatted(date: .abbreviated, time: .shortened)).pdf"
     }
 
     static func document(for payload: AttachmentPayload) -> PDFDocument? {
@@ -164,6 +231,7 @@ enum DocumentError: LocalizedError, Equatable {
     case unreadable
     case missingFile
     case exportFailed
+    case emptyScan
 
     var errorDescription: String? {
         switch self {
@@ -173,6 +241,8 @@ enum DocumentError: LocalizedError, Equatable {
             String(localized: "This document isn't on this device.")
         case .exportFailed:
             String(localized: "The document couldn't be exported.")
+        case .emptyScan:
+            String(localized: "That scan didn't capture any pages.")
         }
     }
 }
