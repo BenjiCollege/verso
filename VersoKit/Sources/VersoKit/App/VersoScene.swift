@@ -115,7 +115,8 @@ public struct VersoScene: Scene {
 
                     switch VersoURL.destination(for: url) {
                     case .note(let id): navigation.openNote(id: id)
-                    case .capture, .none: break
+                    case .capture: navigation.startCapture()
+                    case .none: break
                     }
                 }
                 // Handoff from another device, and Spotlight results, resolve

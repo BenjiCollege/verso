@@ -564,10 +564,17 @@ struct NoteEditorView: View {
         )
     }
 
+    /// Focus Mode, written through to the preference as well as to the page.
+    ///
+    /// The setter only moved the local `isFocusMode`, so the toggle worked for
+    /// the life of the screen and reverted the next time a note was opened —
+    /// under a comment at `onAppear` claiming a page opens the way the last one
+    /// did. `AppearanceStore` is the thing that makes that comment true.
     private var focusModeBinding: Binding<Bool> {
         Binding(
             get: { isFocusMode },
             set: { newValue in
+                appearance.isFocusModeEnabled = newValue
                 motion.run(.settle) { isFocusMode = newValue }
             }
         )

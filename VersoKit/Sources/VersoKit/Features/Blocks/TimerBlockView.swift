@@ -103,6 +103,15 @@ struct TimerBlockView: View {
                 .fixedSize()
 
                 Text("seconds")
+
+                // The only way out. `isEditingDuration` was set true here and
+                // never set false anywhere in the package: there was no Done,
+                // no `onSubmit`, and a number pad has no return key — so the
+                // duration editor was a one-way door. `FormulaBlockView` has
+                // the same control with the same exit two files away.
+                Button("Done") { isEditingDuration = false }
+                    .versoText(.chromeCaption)
+                    .foregroundStyle(theme.accent)
             }
             .versoText(.metadata)
             .foregroundStyle(theme.inkSecondary)

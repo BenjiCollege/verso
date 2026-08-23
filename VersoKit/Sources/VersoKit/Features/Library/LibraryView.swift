@@ -39,6 +39,14 @@ struct LibraryView: View {
     @State private var isCapturing = false
     @State private var query = ""
     @State private var hits: [SearchHit] = []
+    /// Whether a search is in flight.
+    ///
+    /// Without this the view had two states, and the empty one doubled as the
+    /// loading one: the first keystroke of the first search asserted "No
+    /// Results" for the 200ms debounce *plus* a cold search that loads an
+    /// embedding model and decodes every block of every note. Telling someone
+    /// their query found nothing, before looking, is the worst available answer.
+    @State private var isSearching = false
     /// Built on the first search and kept, so the embedding model is loaded
     /// once per session rather than once per query.
     @State private var searchSource: SearchIndexSource?
@@ -106,6 +114,16 @@ struct LibraryView: View {
             // greet someone with a gallery they have no use for.
             .task {
                 guard !appearance.hasSeenGallery else { return }
+
+                // Stand down if the app was launched to do something specific.
+                // A cold launch from the Quick Capture widget arrives with a
+                // request already waiting, and the unprompted gallery would
+                // open over it — the widget promises a note in one tap and the
+                // user would get a template list instead. The flag is left
+                // unset on purpose, so the gallery still gets its one showing
+                // on the next ordinary launch rather than being spent here.
+                guard navigation.pendingCapture == nil, navigation.pending == nil else { return }
+
                 appearance.hasSeenGallery = true
                 guard notes.isEmpty else { return }
                 isChoosingTemplate = true
@@ -113,6 +131,15 @@ struct LibraryView: View {
             // Opening a template file launches the app, so this is always the
             // cold-launch case. The gallery is the confirmation: the import has
             // already happened, and it is sitting there under the user's own.
+            // The Quick Capture widget and the Control Centre control both
+            // arrive as `verso://capture`, which launches the app — so like a
+            // widget tap on a note, the request is already waiting before this
+            // view exists. `initial: true` is what catches that cold launch.
+            .onChange(of: navigation.pendingCapture, initial: true) { _, requested in
+                guard requested != nil else { return }
+                isCapturing = true
+                navigation.clearCapture()
+            }
             .onChange(of: navigation.arrivedTemplate, initial: true) { _, arrival in
                 guard arrival != nil else { return }
                 isChoosingTemplate = true
@@ -122,7 +149,13 @@ struct LibraryView: View {
                 TemplateGalleryView(onSelect: createNote)
             }
             .sheet(isPresented: $isCapturing) {
-                CaptureSheet { _ in }
+                // The sheet hands back the note it made; this used to be
+                // `{ _ in }`. Capturing something and being returned to the
+                // list is the same miss as picking a template was.
+                CaptureSheet { note in
+                    haptics.play(.checklistCheck)
+                    path.append(note)
+                }
             }
             .sheet(isPresented: $isShowingSettings) {
                 SettingsView()
@@ -233,7 +266,14 @@ struct LibraryView: View {
     /// exclude locked and hidden notes.
     @ViewBuilder
     private var searchResults: some View {
-        if hits.isEmpty {
+        if hits.isEmpty && isSearching {
+            // Searching, nothing to show yet.
+            ProgressView()
+                .controlSize(.large)
+                .tint(theme.inkTertiary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityLabel(Text("Searching"))
+        } else if hits.isEmpty {
             ContentUnavailableView.search(text: query)
         } else {
             // Bound once here, deliberately. Read inside the `ForEach` closure
@@ -272,10 +312,17 @@ struct LibraryView: View {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             hits = []
+            isSearching = false
             return
         }
         try? await Task.sleep(for: .milliseconds(200))
         guard !Task.isCancelled else { return }
+
+        // Only after the debounce, so a fast typist never sees a spinner flash
+        // between keystrokes — by then the previous task has been cancelled and
+        // this one is genuinely about to do the work.
+        isSearching = true
+        defer { isSearching = false }
 
         let source = searchSource ?? SearchIndexSource(modelContainer: context.container)
         searchSource = source
