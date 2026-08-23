@@ -9,12 +9,17 @@ struct PageBackground: View {
     @Environment(\.theme) private var theme
     @Environment(\.stock) private var stock
 
+    @Environment(\.readingPreferences) private var reading
+
     @ScaledMetric(relativeTo: .body) private var bodySize: CGFloat = Typography.Role.body.pointSize
 
     /// Rules track the body line height, so ruled paper lines up with the text
-    /// at every Dynamic Type size instead of only the default.
+    /// at every Dynamic Type size instead of only the default — and now at
+    /// every reader setting too. The text scale and the leading both move the
+    /// prose, so both have to move the rules or the writing sits between them.
+    /// `Typography.contentLineHeight` is the one place that number is decided.
     private var lineHeight: CGFloat {
-        bodySize * Typography.Role.body.lineHeightMultiple
+        Typography.contentLineHeight(forSize: bodySize * reading.textScale, reading: reading)
     }
 
     var body: some View {

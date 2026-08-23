@@ -78,8 +78,8 @@ struct InlineStyleTests {
         let dark = try #require(catalog.theme(id: "midnight-oil"))
         let semantic = styled("word", [])
 
-        let a = AttributedText.rendered(semantic, theme: light, bodySize: 17)
-        let b = AttributedText.rendered(semantic, theme: dark, bodySize: 17)
+        let a = AttributedText.rendered(semantic, theme: light, bodySize: 17, reading: .default)
+        let b = AttributedText.rendered(semantic, theme: dark, bodySize: 17, reading: .default)
 
         let inkA = a.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor
         let inkB = b.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor
@@ -89,9 +89,9 @@ struct InlineStyleTests {
 
     @Test("Bold and italic resolve to real font traits, not a synthetic slant")
     func fontTraitsAreApplied() {
-        let plain = AttributedText.font(for: [], size: 17)
-        let bold = AttributedText.font(for: .bold, size: 17)
-        let both = AttributedText.font(for: [.bold, .italic], size: 17)
+        let plain = AttributedText.font(for: [], size: 17, typeface: .serif)
+        let bold = AttributedText.font(for: .bold, size: 17, typeface: .serif)
+        let both = AttributedText.font(for: [.bold, .italic], size: 17, typeface: .serif)
 
         #expect(!plain.fontDescriptor.symbolicTraits.contains(.traitBold))
         #expect(bold.fontDescriptor.symbolicTraits.contains(.traitBold))
@@ -101,7 +101,7 @@ struct InlineStyleTests {
 
     @Test("Code runs are monospaced")
     func codeIsMonospaced() {
-        let code = AttributedText.font(for: .code, size: 17)
+        let code = AttributedText.font(for: .code, size: 17, typeface: .serif)
         #expect(code.fontDescriptor.symbolicTraits.contains(.traitMonoSpace))
     }
 

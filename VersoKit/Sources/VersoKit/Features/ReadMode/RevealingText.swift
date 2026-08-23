@@ -12,6 +12,9 @@ struct RevealingText: UIViewRepresentable {
     let semantic: NSAttributedString
     let theme: Theme
     let bodySize: CGFloat
+    /// The reader's face and leading, which reach the prose through
+    /// `AttributedText` exactly as they do in the editor.
+    let reading: ReadingPreferences
     let plan: RevealPlan
     /// Seconds since the reveal began. Driven by a `TimelineView`.
     let elapsed: TimeInterval
@@ -42,24 +45,46 @@ struct RevealingText: UIViewRepresentable {
     @MainActor
     final class Coordinator {
         private var lastText: NSAttributedString?
-        private var lastThemeID: String?
+        private var lastRendering: RenderingKey?
         private var ranges: [NSRange] = []
         /// Units below this are fully arrived and need no further work.
         private var settledPrefix = 0
 
+        /// Everything the rendered text depends on.
+        ///
+        /// This used to be the theme id alone, and `rendered` was only called
+        /// when it changed — so dragging Size in the reading controls grew the
+        /// titles and headings, which are SwiftUI, and left every paragraph
+        /// exactly where it was. Read Mode is where those controls are reached
+        /// from, which made it the one place they had to work.
+        private struct RenderingKey: Equatable {
+            let themeID: String
+            let bodySize: CGFloat
+            let typeface: ContentTypeface
+            let lineSpacingScale: Double
+        }
+
         func apply(_ parent: RevealingText, to textView: VersoTextView, forcingLayout: Bool) {
+            let key = RenderingKey(
+                themeID: parent.theme.id,
+                bodySize: parent.bodySize,
+                typeface: parent.reading.typeface,
+                lineSpacingScale: parent.reading.lineSpacingScale
+            )
+
             let needsRestyle = forcingLayout
-                || lastThemeID != parent.theme.id
+                || lastRendering != key
                 || lastText?.isEqual(to: parent.semantic) != true
 
             if needsRestyle {
                 textView.attributedText = AttributedText.rendered(
                     parent.semantic,
                     theme: parent.theme,
-                    bodySize: parent.bodySize
+                    bodySize: parent.bodySize,
+                    reading: parent.reading
                 )
                 lastText = parent.semantic
-                lastThemeID = parent.theme.id
+                lastRendering = key
                 ranges = RevealUnits.ranges(in: parent.semantic.string, granularity: parent.plan.granularity)
                 settledPrefix = 0
             }
