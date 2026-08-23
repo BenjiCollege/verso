@@ -22,6 +22,7 @@ struct LibrarySidebar: View {
     /// screen this size reads as a phone app that was stretched.
     let onSettings: () -> Void
     let onTrash: () -> Void
+    let onLinks: () -> Void
 
     @Environment(\.theme) private var theme
     @Environment(\.motion) private var motion
@@ -75,6 +76,7 @@ struct LibrarySidebar: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    Button("Links", systemImage: "point.3.filled.connected.trianglepath.dotted", action: onLinks)
                     Button("Settings", systemImage: "gearshape", action: onSettings)
                     Button("Recently Deleted", systemImage: "trash", action: onTrash)
                 } label: {

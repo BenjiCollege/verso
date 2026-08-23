@@ -70,6 +70,16 @@ struct LibraryView: View {
     @State private var failure: String?
     @State private var filter: LibraryFilter = .all
     @State private var organising: Note?
+    @State private var isShowingGraph = false
+
+    /// Which notes are ticked, and whether we are ticking at all.
+    ///
+    /// Selection is by `UUID` rather than by `Note`: a selected note can be
+    /// trashed by another device mid-selection, and holding the object would
+    /// keep a deleted model alive in a `Set`. An id that no longer resolves is
+    /// simply skipped when the action runs.
+    @State private var isSelecting = false
+    @State private var selection: Set<UUID> = []
 
     var body: some View {
         Group {
@@ -79,6 +89,10 @@ struct LibraryView: View {
                 stackLayout
             }
         }
+        .safeAreaInset(edge: .bottom) {
+            if isSelecting { selectionBar }
+        }
+        .animation(motion.animation(.settle), value: isSelecting)
         // Everything below is layout-independent: sheets, alerts and the
         // buffered requests from widgets, Spotlight and Handoff. Attached once
         // to the `Group` so the two layouts cannot drift apart on any of it.
@@ -99,6 +113,24 @@ struct LibraryView: View {
         }
         .sheet(isPresented: $isShowingTrash) {
             TrashView()
+        }
+        .sheet(isPresented: $isShowingGraph) {
+            NavigationStack {
+                LinkGraphView { note in
+                    // Dismiss first, then open. The graph is a way of *finding*
+                    // a note, so leaving it on screen over the note you just
+                    // found would make it a dead end with a page behind it.
+                    isShowingGraph = false
+                    open(note)
+                }
+                .navigationTitle("Links")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { isShowingGraph = false }
+                    }
+                }
+            }
         }
         .alert(
             "Couldn't create the note",
@@ -143,7 +175,8 @@ struct LibraryView: View {
                 filter: $filter,
                 unfiledCount: unfiledCount,
                 onSettings: { isShowingSettings = true },
-                onTrash: { isShowingTrash = true }
+                onTrash: { isShowingTrash = true },
+                onLinks: { isShowingGraph = true }
             )
         } content: {
             listColumn
@@ -255,14 +288,18 @@ struct LibraryView: View {
         List {
             if !pinnedNotes.isEmpty {
                 Section {
-                    ForEach(pinnedNotes) { row($0) }
+                    ForEach(pinnedNotes) { note in
+                        if isSelecting { selectableRow(note) } else { row(note) }
+                    }
                 } header: {
                     SectionLabel(title: "Pinned")
                 }
             }
 
             Section {
-                ForEach(unpinnedNotes) { row($0) }
+                ForEach(unpinnedNotes) { note in
+                    if isSelecting { selectableRow(note) } else { row(note) }
+                }
             } header: {
                 SectionLabel(
                     title: pinnedNotes.isEmpty ? "All notes" : "Recent",
@@ -274,6 +311,34 @@ struct LibraryView: View {
         .listRowSpacing(Layout.Space.snug)
         .scrollContentBackground(.hidden)
         .contentMargins(.horizontal, Layout.Space.regular, for: .scrollContent)
+    }
+
+    /// The tick, and what tapping the row means while it is showing.
+    private func selectableRow(_ note: Note) -> some View {
+        let isTicked = selection.contains(note.id)
+
+        return HStack(spacing: Layout.Space.cosy) {
+            Image(systemName: isTicked ? "checkmark.circle.fill" : "circle")
+                .imageScale(.large)
+                .foregroundStyle(isTicked ? theme.accent : theme.inkTertiary)
+                .frame(minWidth: Layout.minimumHitTarget, minHeight: Layout.minimumHitTarget)
+
+            NoteRowView(note: note)
+        }
+        .contentShape(.rect)
+        .onTapGesture {
+            // A tap is the whole row, not just the tick — a 44pt target inside
+            // a card-sized row would be a precision test.
+            motion.run(.snap) {
+                if isTicked { selection.remove(note.id) } else { selection.insert(note.id) }
+            }
+        }
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets())
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(isTicked ? [.isButton, .isSelected] : .isButton)
+        .accessibilityHint(Text(isTicked ? "Double tap to deselect" : "Double tap to select"))
     }
 
     private func row(_ note: Note) -> some View {
@@ -475,8 +540,25 @@ struct LibraryView: View {
 
     /// The wide layout puts New Note on the list column and the rest in the
     /// sidebar, so the two toolbars are not the same set.
+    /// Enter and leave selection. Hidden when there is nothing to select, so
+    /// an empty library does not offer to select none of it.
+    @ViewBuilder
+    private var selectButton: some View {
+        if isSelecting {
+            Button("Done") { motion.run(.settle) { endSelecting() } }
+                .fontWeight(.semibold)
+        } else if !visibleNotes.isEmpty {
+            Button("Select", systemImage: "checkmark.circle") {
+                motion.run(.settle) { isSelecting = true }
+            }
+        }
+    }
+
     @ToolbarContentBuilder
     private var newNoteButton: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            selectButton
+        }
         ToolbarItem(placement: .primaryAction) {
             Menu {
                 Button("From a Template", systemImage: "doc.on.doc") {
@@ -521,11 +603,20 @@ struct LibraryView: View {
         }
 
         ToolbarItem(placement: .topBarLeading) {
+            selectButton
+        }
+
+        ToolbarItem(placement: .topBarLeading) {
             Menu {
                 Button {
                     isShowingSettings = true
                 } label: {
                     Label("Settings", systemImage: "gearshape")
+                }
+                Button {
+                    isShowingGraph = true
+                } label: {
+                    Label("Links", systemImage: "point.3.filled.connected.trianglepath.dotted")
                 }
                 Button {
                     isShowingTrash = true
@@ -536,6 +627,65 @@ struct LibraryView: View {
                 Label("More", systemImage: "ellipsis.circle")
             }
         }
+    }
+
+    /// What you can do to a selection. Shown only while selecting, and only
+    /// enabled once something is ticked — a bar of dead buttons is worse than
+    /// no bar.
+    private var selectionBar: some View {
+        let chosen = notes.filter { selection.contains($0.id) }
+
+        return HStack(spacing: Layout.Space.regular) {
+            Button {
+                motion.run(.settle) {
+                    for note in chosen { note.isPinned = true }
+                    endSelecting()
+                }
+                haptics.play(.checklistCheck)
+            } label: {
+                Label("Pin", systemImage: "pin")
+            }
+
+            Button {
+                // One sheet cannot file several notes, so filing in bulk means
+                // filing them one at a time — which is not filing in bulk. The
+                // honest move is to open the sheet for the first and leave the
+                // rest selected, rather than pretend.
+                if let first = chosen.first { organising = first }
+            } label: {
+                Label("Organise", systemImage: "folder")
+            }
+            .disabled(chosen.count != 1)
+
+            Spacer(minLength: 0)
+
+            Button(role: .destructive) {
+                motion.run(.settle) {
+                    for note in chosen {
+                        note.isTrashed = true
+                        note.trashedAt = Date()
+                    }
+                    endSelecting()
+                }
+                haptics.play(.noteDeleted)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+        .labelStyle(.iconOnly)
+        .imageScale(.large)
+        .disabled(chosen.isEmpty)
+        .padding(.horizontal, Layout.Space.loose)
+        .padding(.vertical, Layout.Space.cosy)
+        .frame(maxWidth: .infinity)
+        .background(.bar)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text("Actions for ^[\(chosen.count) note](inflect: true)"))
+    }
+
+    private func endSelecting() {
+        isSelecting = false
+        selection = []
     }
 
     // MARK: - Actions
