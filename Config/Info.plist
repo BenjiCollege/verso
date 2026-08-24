@@ -6,81 +6,6 @@
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
 	<string>Verso</string>
-	<key>CFBundleExecutable</key>
-	<string>$(EXECUTABLE_NAME)</string>
-	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-	<key>CFBundleName</key>
-	<string>$(PRODUCT_NAME)</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>$(MARKETING_VERSION)</string>
-	<key>CFBundleVersion</key>
-	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Verso uses the microphone so you can dictate a note instead of typing it. Recording stays on this device.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Verso turns what you dictate into a note. Transcription happens entirely on this device — your voice is never sent anywhere.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Verso uses the camera so you can photograph a receipt or a letter and attach it to a note as a tidy, straightened PDF. Scans are saved on this device and nowhere else.</string>
-	<key>NSFaceIDUsageDescription</key>
-	<string>Verso uses Face ID to open your vault, so your locked notes can be encrypted on disk rather than merely hidden behind a screen.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Verso uses your location to find the nearest matches for place reminders like “any grocery store”, so a list can remind you when you get there.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Verso watches the places you attach to your lists so it can remind you when you arrive, even when Verso isn't open. Your location is used only on this device and is never sent anywhere.</string>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleURLName</key>
-			<string>com.verso.notes</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>verso</string>
-			</array>
-		</dict>
-	</array>
-	<key>NSUserActivityTypes</key>
-	<array>
-		<string>com.verso.notes.open-note</string>
-	</array>
-	<key>UTExportedTypeDeclarations</key>
-	<array>
-		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>com.verso.notes.template</string>
-			<key>UTTypeDescription</key>
-			<string>Verso Template</string>
-			<key>UTTypeConformsTo</key>
-			<array>
-				<string>public.json</string>
-			</array>
-			<key>UTTypeTagSpecification</key>
-			<dict>
-				<key>public.filename-extension</key>
-				<array>
-					<string>versotemplate</string>
-				</array>
-			</dict>
-		</dict>
-	</array>
-	<!-- NO, not YES, despite the recommendation in ITMS-90737's text. Verso
-	     never edits a file where it lies: `UserTemplateStore.importTemplate`
-	     reads the bytes and writes a new file under a new id, and
-	     `DocumentStore.importDocument` copies deliberately, so a note can
-	     never point at a document that has wandered off. Declaring YES would
-	     promise in-place editing the app does not do. There is no
-	     UIDocumentBrowserViewController either, so UISupportsDocumentBrowser
-	     stays absent. -->
-	<key>LSSupportsOpeningDocumentsInPlace</key>
-	<false/>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -96,6 +21,55 @@
 			</array>
 		</dict>
 	</array>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.verso.notes</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>verso</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>Verso uses the camera so you can photograph a receipt or a letter and attach it to a note as a tidy, straightened PDF. Scans are saved on this device and nowhere else.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Verso uses Face ID to open your vault, so your locked notes can be encrypted on disk rather than merely hidden behind a screen.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Verso watches the places you attach to your lists so it can remind you when you arrive, even when Verso isn't open. Your location is used only on this device and is never sent anywhere.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Verso uses your location to find the nearest matches for place reminders like “any grocery store”, so a list can remind you when you get there.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Verso uses the microphone so you can dictate a note instead of typing it. Recording stays on this device.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Verso turns what you dictate into a note. Transcription happens entirely on this device — your voice is never sent anywhere.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>com.verso.notes.open-note</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -110,18 +84,38 @@
 	<array>
 		<string>arm64</string>
 	</array>
-	<key>UISupportedInterfaceOrientations~iphone</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~iphone</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.json</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Verso Template</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.verso.notes.template</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>versotemplate</string>
+				</array>
+			</dict>
+		</dict>
 	</array>
 </dict>
 </plist>

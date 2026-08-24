@@ -27,7 +27,12 @@ enum TextRecognition {
     /// Lines rather than one joined string, because position carries meaning in
     /// anything printed: a receipt's total is on its own line, and joining
     /// first would destroy the only structure the paper had.
-    static func lines(in image: UIImage) async throws -> [String] {
+    /// - Parameter correcting: whether to run Vision's language corrector.
+    ///   Off by default, because the caller that came first was a receipt and
+    ///   the corrector turns prices into words. Handwriting is the opposite
+    ///   case — it is prose, it is ambiguous, and a dictionary is exactly what
+    ///   resolves an ambiguous glyph — so `InkRecognition` asks for it.
+    static func lines(in image: UIImage, correcting: Bool = false) async throws -> [String] {
         guard let cgImage = image.cgImage else { throw RecognitionError.unreadableImage }
 
         return try await withCheckedThrowingContinuation { continuation in
@@ -49,10 +54,9 @@ enum TextRecognition {
                 // printed and read once. The extra milliseconds are free at
                 // this scale, and a misread total is worse than a slow one.
                 request.recognitionLevel = .accurate
-                // Printed receipts are not prose, and the corrector "fixes"
-                // prices into words it knows. £4.50 becoming "450" once is
-                // enough to turn this off.
-                request.usesLanguageCorrection = false
+                // See `correcting` above: prose wants the dictionary, printed
+                // amounts are ruined by it.
+                request.usesLanguageCorrection = correcting
 
                 do {
                     try VNImageRequestHandler(cgImage: cgImage, options: [:]).perform([request])
@@ -74,10 +78,10 @@ enum TextRecognition {
     }
 
     /// Every page's lines, concatenated in page order.
-    static func lines(in images: [UIImage]) async throws -> [String] {
+    static func lines(in images: [UIImage], correcting: Bool = false) async throws -> [String] {
         var all: [String] = []
         for image in images {
-            all.append(contentsOf: try await lines(in: image))
+            all.append(contentsOf: try await lines(in: image, correcting: correcting))
         }
         return all
     }
