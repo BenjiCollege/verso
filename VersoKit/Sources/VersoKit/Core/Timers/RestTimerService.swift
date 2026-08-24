@@ -73,6 +73,9 @@ final class RestTimerService {
         justFinished.remove(blockID)
         persist()
         scheduleNotification(for: state, sound: sound, label: label)
+        // The Lock Screen face of the same countdown. Best-effort by design —
+        // see TimerLiveActivity — so nothing below depends on it working.
+        TimerLiveActivity.start(state, label: label)
         activateAudioSession()
         startTicking()
     }
@@ -83,6 +86,7 @@ final class RestTimerService {
         running[blockID] = state
         persist()
         cancelNotification(for: blockID)
+        TimerLiveActivity.update(state)
     }
 
     func resume(blockID: UUID, sound: TimerPayload.Sound, label: String) {
@@ -92,6 +96,7 @@ final class RestTimerService {
         running[blockID] = state
         persist()
         scheduleNotification(for: state, sound: sound, label: label)
+        TimerLiveActivity.update(state)
         startTicking()
     }
 
@@ -100,6 +105,9 @@ final class RestTimerService {
         justFinished.remove(blockID)
         persist()
         cancelNotification(for: blockID)
+        // Stopped by hand: take it off the Lock Screen at once. Leaving it to
+        // linger would show a countdown for something already cancelled.
+        TimerLiveActivity.end(blockID: blockID)
         stopTickingIfIdle()
     }
 
@@ -152,6 +160,9 @@ final class RestTimerService {
             // cancelling a delivered request is harmless, and cancelling a
             // pending one stops the user being told twice.
             cancelNotification(for: blockID)
+            // Lingers a few seconds rather than vanishing, so a timer that
+            // reached zero on a table is still readable when it is picked up.
+            TimerLiveActivity.finish(blockID: blockID)
             changed = true
         }
         if changed { persist() }
@@ -165,6 +176,12 @@ final class RestTimerService {
     }
 
     private func restore() {
+        // Runs even when there is nothing stored. A previous launch that
+        // crashed mid-timer leaves a Live Activity behind with no state to
+        // match it, and it would otherwise sit on the Lock Screen counting
+        // down to nothing until the system reaped it hours later.
+        defer { TimerLiveActivity.endOrphans(keeping: Set(running.keys)) }
+
         guard let data = defaults.data(forKey: Self.storageKey),
               let states = try? JSONDecoder().decode([RestTimerState].self, from: data)
         else { return }

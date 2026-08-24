@@ -14,6 +14,7 @@ struct VersoWidgetBundle: WidgetBundle {
         RecentNotesWidget()
         QuickCaptureWidget()
         VersoCaptureControl()
+        TimerLiveActivityWidget()
     }
 }
 
