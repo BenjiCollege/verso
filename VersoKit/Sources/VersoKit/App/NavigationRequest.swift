@@ -34,10 +34,30 @@ final class NavigationRequest {
     private(set) var pending: Request?
     private(set) var arrivedTemplate: TemplateArrival?
 
+    /// A request to start a capture, from the Quick Capture widget or the
+    /// Control Centre control.
+    ///
+    /// Buffered like the rest, and for the sharpest version of the reason: the
+    /// widget's whole promise is "start a note in one tap", and a tap on it
+    /// *launches* the app — so the request always arrives before there is a
+    /// library view to open the sheet from.
+    ///
+    /// A `Date` rather than a `Bool` so two taps in a row both count. A flag
+    /// that is already `true` is indistinguishable from one nobody set.
+    private(set) var pendingCapture: Date?
+
     nonisolated init() {}
 
     func openNote(id: UUID, startRecording: Bool = false) {
         pending = Request(noteID: id, startRecording: startRecording, issuedAt: Date())
+    }
+
+    func startCapture() {
+        pendingCapture = Date()
+    }
+
+    func clearCapture() {
+        pendingCapture = nil
     }
 
     func templateArrived(named name: String) {

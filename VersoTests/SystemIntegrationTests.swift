@@ -216,3 +216,67 @@ struct IntentTests {
         #expect(entity.summary.isEmpty)
     }
 }
+
+/// The Quick Capture widget says "Start a note in one tap", and the Control
+/// Centre control makes the same promise. Both of them just open
+/// `verso://capture`, which the scene used to route to `break`.
+///
+/// The lesson the audit drew from that whole class of bug: any string that
+/// names an outcome should have a test that the outcome happens.
+@Suite("Capture routing")
+@MainActor
+struct CaptureRoutingTests {
+
+    @Test("The capture URL resolves to capture, not to nothing")
+    func captureURLResolves() {
+        #expect(VersoURL.destination(for: VersoURL.capture) == .capture)
+    }
+
+    @Test("A capture request is buffered until something can act on it")
+    func requestIsBuffered() {
+        let navigation = NavigationRequest()
+        #expect(navigation.pendingCapture == nil)
+
+        navigation.startCapture()
+        #expect(navigation.pendingCapture != nil)
+
+        navigation.clearCapture()
+        #expect(navigation.pendingCapture == nil)
+    }
+
+    /// Buffered as a `Date` rather than a `Bool` for this reason: tapping the
+    /// widget twice has to open the sheet twice, and a flag that is already
+    /// `true` is indistinguishable from one nobody set.
+    @Test("Two taps in a row are two requests")
+    func repeatedTapsAreDistinct() {
+        let navigation = NavigationRequest()
+
+        navigation.startCapture()
+        let first = navigation.pendingCapture
+        navigation.clearCapture()
+
+        navigation.startCapture()
+        let second = navigation.pendingCapture
+
+        #expect(first != nil)
+        #expect(second != nil)
+        #expect(first != second)
+    }
+
+    /// A note request and a capture request are separate buffers, so one
+    /// cannot swallow the other.
+    @Test("Opening a note and starting a capture do not collide")
+    func requestsAreIndependent() {
+        let navigation = NavigationRequest()
+        let id = UUID()
+
+        navigation.openNote(id: id)
+        navigation.startCapture()
+
+        #expect(navigation.pending?.noteID == id)
+        #expect(navigation.pendingCapture != nil)
+
+        navigation.clearCapture()
+        #expect(navigation.pending?.noteID == id)
+    }
+}

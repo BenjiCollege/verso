@@ -67,12 +67,6 @@ final class BlockActions {
         return true
     }
 
-    func canMove(_ block: Block, in note: Note, by offset: Int) -> Bool {
-        let ordered = note.orderedBlocks
-        guard let index = ordered.firstIndex(where: { $0.id == block.id }) else { return false }
-        return ordered.indices.contains(index + offset)
-    }
-
     func delete(_ block: Block, in note: Note, context: ModelContext) {
         recovered = Deleted(
             id: block.id,

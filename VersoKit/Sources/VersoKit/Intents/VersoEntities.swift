@@ -227,10 +227,11 @@ enum WidgetDataSource {
     }
 }
 
-/// The container intents and widgets use.
+/// The container intents, widgets and the share extension use.
 ///
-/// Both run outside the app process, so they cannot borrow the app's. It is an
-/// app-group store for the same reason.
+/// All three run outside the app process, so none of them can borrow the app's.
+/// It is an app-group store for the same reason. The name is historical — it
+/// was the intents that needed it first.
 enum VersoIntentContainer {
     static let shared: ModelContainer = {
         do {

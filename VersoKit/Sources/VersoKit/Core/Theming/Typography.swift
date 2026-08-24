@@ -147,6 +147,25 @@ enum Typography {
     }
 }
 
+// MARK: - Drawing
+
+extension Typography {
+    /// A `Text` set in a role, for the drawing paths.
+    ///
+    /// `Canvas` resolves a `Text`, and a `Text` carries its own font —
+    /// `.versoText(role)` styles a *view* and cannot reach inside a
+    /// `GraphicsContext`. So a drawn label needs a second door onto the scale,
+    /// and this is deliberately the only one, and deliberately narrow: the
+    /// caller passes a size it has already put through `@ScaledMetric`, so a
+    /// label that is painted grows with Dynamic Type exactly like one that is
+    /// laid out.
+    static func drawn(_ string: String, role: Role, scaledSize: CGFloat) -> Text {
+        Text(string)
+            .font(.system(size: scaledSize, weight: role.weight, design: role.family.design))
+            .tracking(scaledSize * role.trackingFraction)
+    }
+}
+
 // MARK: - Application
 
 private struct VersoTextStyle: ViewModifier {

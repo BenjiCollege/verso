@@ -67,6 +67,24 @@ struct NoteEditorView: View {
         versions = versionStore.versions(of: note)
     }
 
+    /// How long the note reads, for the fore-edge's leaf density.
+    ///
+    /// Cached for the same reason `versions` is, only more so. Computing it
+    /// built a whole `NoteSnapshot` — which sorts the blocks and copies every
+    /// payload — and then `readableLength` decoded every one of those payloads,
+    /// base64 included, to count the characters. That ran on every pass of
+    /// `body`, and `body` runs twice per keystroke: once for the text change
+    /// and once for the selection change that follows it.
+    ///
+    /// The number it produces is a leaf count on a 14pt strip. It does not need
+    /// to be recomputed while somebody types a word — only when the note's
+    /// shape changes, which is when history is recorded anyway.
+    @State private var foreEdgeLength = 0
+
+    private func refreshForeEdgeLength() {
+        foreEdgeLength = NoteSnapshot(note).readableLength
+    }
+
     private var theme: Theme { catalog.theme(id: note.themeID) ?? appTheme }
     private var stock: Stock { catalog.stock(id: note.stockID) ?? appStock }
 
@@ -176,12 +194,18 @@ struct NoteEditorView: View {
         .onChange(of: note.versions?.count) { _, _ in
             refreshVersions()
         }
+        // A block added or removed changes the note's length enough to be worth
+        // a leaf; a character typed does not.
+        .onChange(of: note.blocks?.count) { _, _ in
+            refreshForeEdgeLength()
+        }
         .task {
             haptics.prepare()
             // The first version is the note as it was when opened, so there is
             // always something to scrub back to.
             versionStore.record(note)
             refreshVersions()
+            refreshForeEdgeLength()
         }
         .onDisappear {
             versionStore.record(note)
@@ -200,7 +224,7 @@ struct NoteEditorView: View {
     private var foreEdge: some View {
         ForeEdgeView(
             model: ForeEdgeModel.make(
-                readableLength: NoteSnapshot(note).readableLength,
+                readableLength: foreEdgeLength,
                 themeID: theme.id,
                 isLocked: note.isLocked
             ),
@@ -244,6 +268,7 @@ struct NoteEditorView: View {
         // the retention limit can leave the count unchanged, which is why this
         // does not rely on `onChange` noticing.
         refreshVersions()
+        refreshForeEdgeLength()
         haptics.play(.vaultClasp)
     }
 
@@ -261,14 +286,21 @@ struct NoteEditorView: View {
                 } else {
                     titleField
 
-                    ForEach(note.orderedBlocks) { block in
+                    // Sorted once, not once per row. `canMove` called
+                    // `note.orderedBlocks` internally, so asking it twice for
+                    // every realized row sorted the whole note twice per row —
+                    // and it only ever wanted to know whether an index had a
+                    // neighbour, which the enumeration already says.
+                    let ordered = note.orderedBlocks
+
+                    ForEach(Array(ordered.enumerated()), id: \.element.id) { index, block in
                         BlockRenderer(block: block)
                             .opacity(dimming(for: block))
                             .animation(motion.animation(.settle), value: isChromeHidden)
                             .animation(motion.animation(.settle), value: session.activeBlockID)
                             .blockActions(
-                                canMoveUp: blockActions.canMove(block, in: note, by: -1),
-                                canMoveDown: blockActions.canMove(block, in: note, by: 1),
+                                canMoveUp: index > 0,
+                                canMoveDown: index < ordered.count - 1,
                                 moveUp: { move(block, by: -1) },
                                 moveDown: { move(block, by: 1) },
                                 duplicate: {
@@ -514,6 +546,10 @@ struct NoteEditorView: View {
                 } label: {
                     Label("Read Mode", systemImage: "book.pages")
                 }
+                // ⌘R for read, ⌘⇧E for export — the two things you do to a
+                // finished note. Menu items carry their shortcut in the menu
+                // itself, so these are discoverable rather than folklore.
+                .keyboardShortcut("r", modifiers: .command)
                 // A locked note cannot be shared even while the vault is open.
                 // The point of locking it was to keep it in.
                 if VaultPolicy.isEligibleForSharing(note) {
@@ -522,6 +558,7 @@ struct NoteEditorView: View {
                     } label: {
                         Label("Share", systemImage: "square.and.arrow.up")
                     }
+                    .keyboardShortcut("e", modifiers: [.command, .shift])
                 }
 
                 Button {
@@ -564,10 +601,17 @@ struct NoteEditorView: View {
         )
     }
 
+    /// Focus Mode, written through to the preference as well as to the page.
+    ///
+    /// The setter only moved the local `isFocusMode`, so the toggle worked for
+    /// the life of the screen and reverted the next time a note was opened —
+    /// under a comment at `onAppear` claiming a page opens the way the last one
+    /// did. `AppearanceStore` is the thing that makes that comment true.
     private var focusModeBinding: Binding<Bool> {
         Binding(
             get: { isFocusMode },
             set: { newValue in
+                appearance.isFocusModeEnabled = newValue
                 motion.run(.settle) { isFocusMode = newValue }
             }
         )

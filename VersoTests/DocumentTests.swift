@@ -1,6 +1,8 @@
 import CoreGraphics
 import Foundation
+import PDFKit
 import Testing
+import UIKit
 @testable import VersoKit
 
 @Suite("Document annotations")
@@ -244,5 +246,184 @@ struct AttachmentPayloadTests {
         #expect(flattened.hasSuffix(".pdf"))
         #expect(flattened.contains("Lease"))
         #expect(!flattened.contains(".pdf ("), "the original extension should not be doubled up")
+    }
+}
+
+/// The page raster cache.
+///
+/// `DocumentStore.image` is called from `body`, so it runs on every pass — and
+/// `body` re-runs on every tick of a highlight drag. Without a cache, dragging
+/// across a paragraph re-rendered the whole page at 2× for each frame.
+///
+/// What is worth testing is not the speed but the *identity*: a cache that
+/// returns the wrong page is far worse than no cache.
+@Suite("Document raster cache")
+struct DocumentRasterCacheTests {
+
+    /// A one-page PDF of a given size, written to a real file — the cache keys
+    /// on `documentURL`, so an in-memory document would not exercise it.
+    private func makeDocument(width: CGFloat, height: CGFloat) throws -> PDFDocument {
+        let bounds = CGRect(x: 0, y: 0, width: width, height: height)
+        let data = NSMutableData()
+        let consumer = try #require(CGDataConsumer(data: data))
+        var media = bounds
+        let context = try #require(CGContext(consumer: consumer, mediaBox: &media, nil))
+        context.beginPDFPage(nil)
+        context.setFillColor(UIColor.black.cgColor)
+        context.fill(CGRect(x: 0, y: 0, width: width / 2, height: height / 2))
+        context.endPDFPage()
+        context.closePDF()
+
+        let url = URL.temporaryDirectory.appending(path: "\(UUID().uuidString).pdf")
+        try (data as Data).write(to: url)
+        return try #require(PDFDocument(url: url))
+    }
+
+    @Test("The same page at the same width comes back identical")
+    func repeatedRenderIsCached() throws {
+        // The document is held for the length of the test on purpose:
+        // `PDFPage.document` is a back-reference, and a page whose document has
+        // gone reports `nil` — at which point the cache silently stops working
+        // because it can no longer identify what it is caching.
+        let document = try makeDocument(width: 200, height: 300)
+        let page = try #require(document.page(at: 0))
+
+        let first = try #require(DocumentStore.image(of: page, fittingWidth: 120))
+        let second = try #require(DocumentStore.image(of: page, fittingWidth: 120))
+
+        #expect(first === second)
+    }
+
+    /// Rotating the device asks for a different width. Serving the old raster
+    /// would show the portrait rendering stretched.
+    @Test("A different width is a different rendering")
+    func widthIsPartOfTheIdentity() throws {
+        let document = try makeDocument(width: 200, height: 300)
+        let page = try #require(document.page(at: 0))
+
+        let narrow = try #require(DocumentStore.image(of: page, fittingWidth: 120))
+        let wide = try #require(DocumentStore.image(of: page, fittingWidth: 240))
+
+        #expect(narrow !== wide)
+        #expect(narrow.size.width != wide.size.width)
+    }
+
+    /// The reason the key is the document's URL and not `ObjectIdentifier`:
+    /// an address is reused, so a closed document's cached pages could be
+    /// served to whatever is allocated where it used to be.
+    @Test("Two documents never serve each other's pages")
+    func documentsDoNotCollide() throws {
+        let tallDocument = try makeDocument(width: 200, height: 400)
+        let squatDocument = try makeDocument(width: 200, height: 100)
+        let tall = try #require(tallDocument.page(at: 0))
+        let squat = try #require(squatDocument.page(at: 0))
+
+        let a = try #require(DocumentStore.image(of: tall, fittingWidth: 100))
+        let b = try #require(DocumentStore.image(of: squat, fittingWidth: 100))
+
+        #expect(a !== b)
+        // Same requested width, different page shapes — so a collision would
+        // show up as the wrong height.
+        #expect(a.size.height != b.size.height)
+    }
+}
+
+/// Scanning is a second way in to the *same* attachment. The tests below are
+/// about that sameness: a scan the viewer, the annotation layers and the export
+/// modes cannot tell from an imported file is the whole design.
+@Suite("Scanned documents")
+struct DocumentScanTests {
+
+    private func page(_ colour: UIColor, size: CGSize = CGSize(width: 612, height: 792)) -> UIImage {
+        UIGraphicsImageRenderer(size: size).image { context in
+            colour.setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+        }
+    }
+
+    @Test("A scan lands where an import lands, as a readable PDF")
+    func scanIsStoredLikeAnImport() throws {
+        let payload = try DocumentStore.importScan(pages: [page(.white), page(.lightGray)])
+        defer { DocumentStore.delete(payload) }
+
+        #expect(!payload.isEmpty)
+        #expect(DocumentStore.exists(payload.assetID))
+        // The viewer, the exporter and the annotation layers all go through
+        // this one call. If it returns nil the attachment is a dead end.
+        #expect(DocumentStore.document(for: payload)?.pageCount == 2)
+        #expect(payload.pageCount == 2)
+        #expect(payload.byteCount > 0)
+        #expect(!payload.thumbnail.isEmpty)
+    }
+
+    /// Every page shot has to make it in, in order — a scanner that quietly
+    /// keeps the first page of a five-page letter is worse than one that fails.
+    @Test("Every photographed page becomes a page of the PDF")
+    func everyPageSurvives() throws {
+        let payload = try DocumentStore.importScan(pages: (0..<5).map { _ in page(.white) })
+        defer { DocumentStore.delete(payload) }
+
+        #expect(payload.pageCount == 5)
+    }
+
+    /// `URL.path()` percent-encodes, and every iOS container path contains
+    /// "Application Support" — so the space arrived as `%20` and
+    /// `fileExists` answered no about a file that was right there. Only the
+    /// label was wrong, which is why it survived: the viewer opened the same
+    /// document perfectly while the card said "Not on this device".
+    @Test("A document in the container is reported present, space in the path and all")
+    func presenceSurvivesAnEncodedPath() throws {
+        let payload = try DocumentStore.importScan(pages: [page(.white)])
+        defer { DocumentStore.delete(payload) }
+
+        #expect(DocumentStore.directory.path(percentEncoded: true).contains("%20"),
+                "the container path must still be one that needs encoding, or this proves nothing")
+        #expect(DocumentStore.exists(payload.assetID))
+    }
+
+    @Test("A scan that captured nothing is refused rather than stored empty")
+    func emptyScanThrows() {
+        #expect(throws: DocumentError.emptyScan) {
+            _ = try DocumentStore.importScan(pages: [])
+        }
+    }
+
+    @Test("Two scans do not collide, so one cannot overwrite the other")
+    func scansGetDistinctAssets() throws {
+        let first = try DocumentStore.importScan(pages: [page(.white)])
+        let second = try DocumentStore.importScan(pages: [page(.darkGray)])
+        defer {
+            DocumentStore.delete(first)
+            DocumentStore.delete(second)
+        }
+
+        #expect(first.assetID != second.assetID)
+        #expect(DocumentStore.exists(first.assetID))
+        #expect(DocumentStore.exists(second.assetID))
+    }
+
+    /// The name is what the card, search and both export filenames show.
+    @Test("A scan is named for when it was taken, and named as a PDF")
+    func scanIsNamedByDate() throws {
+        let payload = try DocumentStore.importScan(pages: [page(.white)])
+        defer { DocumentStore.delete(payload) }
+
+        #expect(payload.fileName.hasSuffix(".pdf"))
+        #expect(payload.displayName == payload.fileName)
+
+        let morning = DocumentStore.scanFileName(date: Date(timeIntervalSince1970: 0))
+        let later = DocumentStore.scanFileName(date: Date(timeIntervalSince1970: 86_400))
+        #expect(morning != later, "two scans on different days must not share a name")
+    }
+
+    /// Deleting is the same call for both, which is only true because a scan
+    /// is stored as an ordinary document asset.
+    @Test("Deleting a scan takes the file with it")
+    func deletingRemovesTheFile() throws {
+        let payload = try DocumentStore.importScan(pages: [page(.white)])
+        DocumentStore.delete(payload)
+
+        #expect(!DocumentStore.exists(payload.assetID))
+        #expect(DocumentStore.document(for: payload) == nil)
     }
 }
